@@ -3,14 +3,14 @@
 
 $INSTALL_BASE = <<SCRIPT
   sudo apt-get update
-  sudo apt-get install -y build-essential vim emacs
+  sudo apt-get install -y build-essential vim emacs cmake libgtest-dev
 
   echo "tc qdisc add dev enp0s8 root netem loss 10% delay 20ms" > /set-loss.sh
   chmod 755 /set-loss.sh
 SCRIPT
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "boxcutter/ubuntu1604"
+  config.vm.box = "bento/ubuntu-16.04"
   config.vm.provision "shell", inline: $INSTALL_BASE
 
   # config.vm.provider "virtualbox" do |vb|
