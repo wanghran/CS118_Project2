@@ -20,12 +20,12 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Enable cmake testing
-# include(CTest)
-# enable_testing()
+include(CTest)
+enable_testing()
 
 # Enable GoogleTest
 # include(GoogleTest)
-# add_subdirectory(/usr/src/googletest googletest)
+# add_subdirectory(/usr/src/googletest/googletest googletest)
 
 # Enable Boost
 # Use static libraries so binaries can be deployed without a full boost install
@@ -33,16 +33,16 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(include)
 
 # TODO(!): Update name and srcs
-# add_library(logger_lib src/logger.cc)
+add_library(lib_header src/tcp_header.cpp)
 
 # TODO(!): Update executable name, srcs, and deps
 add_executable(server src/server.cpp)
 add_executable(client src/client.cpp)
 
 # TODO(!): Update test executable name, srcs, and deps
-# add_executable(NginxConfig_test tests/NginxConfig_test.cc)
+add_executable(header_test tests/tcp_header_test.cpp)
 
-# target_link_libraries(NginxConfig_test NginxConfig_lib NginxConfigParser_lib NginxConfigStatement_lib gtest_main)
+target_link_libraries(header_test lib_header)
 
 # TODO(!): Update with test binary
 # gtest_discover_tests(NginxConfig_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests)
