@@ -51,6 +51,12 @@ unsigned int tcp_header::give_ack(std::string header)
   return (unsigned int)ack.to_ulong();
 }
 
+unsigned short tcp_header::give_id(std::string header)
+{
+  std::bitset<16> id(header.substr(64, 80));
+  return (unsigned short)id.to_ulong();
+}
+
 unsigned short tcp_header::give_flag(std::string header)
 {
   std::bitset<16> flag(header.substr(80, 96));
