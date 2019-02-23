@@ -10,6 +10,5 @@ int main()
   tcp_header header(server_seq, server_ack, id, flag);
   std::cout << (tcp_header::give_seq(header.give_header()) == server_seq) << std::endl;
   std::cout << (tcp_header::give_ack(header.give_header()) == server_ack) << std::endl;
-  std::cout << (tcp_header::give_id(header.give_header()) == id) << std::endl;
   std::cout << (tcp_header::give_flag(header.give_header()) == flag) << std::endl;
 }

@@ -22,7 +22,6 @@ class tcp_header
     std::string give_header();
     static unsigned int give_seq(std::string header);
     static unsigned int give_ack(std::string header);
-    static unsigned short give_id(std::string header);
     static unsigned short give_flag(std::string header);
 };
 #endif
