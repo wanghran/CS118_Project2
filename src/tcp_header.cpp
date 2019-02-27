@@ -1,6 +1,8 @@
 #include <bitset>
 #include "tcp_header.hpp"
 
+tcp_header::tcp_header() {}
+
 void tcp_header::set_seq_num(unsigned int seq_num)
 {
   this->seq_num = seq_num;

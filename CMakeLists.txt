@@ -34,6 +34,7 @@ include_directories(include)
 
 # TODO(!): Update name and srcs
 add_library(lib_header src/tcp_header.cpp)
+add_library(lib_packet src/packet.cpp)
 
 # TODO(!): Update executable name, srcs, and deps
 add_executable(server src/server.cpp)
@@ -41,8 +42,10 @@ add_executable(client src/client.cpp)
 
 # TODO(!): Update test executable name, srcs, and deps
 add_executable(header_test tests/tcp_header_test.cpp)
+add_executable(packet_test tests/packet_test.cpp)
 
 target_link_libraries(header_test lib_header)
+target_link_libraries(packet_test lib_packet lib_header)
 
 # TODO(!): Update with test binary
 # gtest_discover_tests(NginxConfig_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests)

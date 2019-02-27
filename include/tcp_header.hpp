@@ -17,7 +17,8 @@ class tcp_header
     void set_flag(unsigned short flag);
 
   public:
-    tcp_header(unsigned int seq_num, unsigned int ack_num, 
+    tcp_header();
+    tcp_header(unsigned int seq_num, unsigned int ack_num,
                unsigned short ID, unsigned short flag);
     std::string give_header();
     static unsigned int give_seq(std::string header);
