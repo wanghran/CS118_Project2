@@ -18,10 +18,12 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#include "packet.hpp"
+
 //http://developerweb.net/viewtopic.php?id=3196
 
 using namespace std;
-#define size 1024
+#define buffer_size 512
 struct addrinfo hints, *infoptr;
 
 int main(int argc, char* argv[]){
@@ -43,7 +45,7 @@ int main(int argc, char* argv[]){
 
 
   int clientSocket, portNum, nBytes;
-  char buffer[1024];
+  char buffer[buffer_size];
   struct sockaddr_in serverAddr;
   socklen_t addr_size;
 
@@ -69,6 +71,9 @@ int main(int argc, char* argv[]){
 
   while(1){
     memset(buffer, '\0', sizeof(buffer));
+    // shared_ptr<packet> pack(new packet(buffer, buffer_size, 12345, 4321, 0, 4));
+    // std::stringstream ss;
+    // ss.read((char*)&pack, sizeof(pack));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
 
     if (sendto(clientSocket,buffer,bytes_send,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {

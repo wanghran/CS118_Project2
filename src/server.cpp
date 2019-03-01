@@ -16,9 +16,12 @@
 #include <unistd.h>
 #include <thread>
 #include <cstring>
+
+#include "packet.hpp"
+
 using namespace std;
 
-#define size 4096
+#define buffer_size 512
 int thread_id = 0;
 static const int num_threads = 11;
 
@@ -63,7 +66,7 @@ int main(int argc, char* argv[]){
 
 
   int udpSocket, nBytes;
-  char buffer[1024];
+  char buffer[buffer_size];
   struct sockaddr_in serverAddr, clientAddr;
   struct sockaddr_storage serverStorage;
   socklen_t addr_size, client_addr_size;
@@ -85,7 +88,7 @@ int main(int argc, char* argv[]){
 
 
 // save to file
-  char file_name[size];
+  char file_name[buffer_size+12];
   sprintf(file_name,"%s/%d.file", save_directory, 1);
 
   ofstream output(file_name, ios::out | ios::trunc | ios::binary);
