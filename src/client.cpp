@@ -17,13 +17,15 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #include "packet.hpp"
 
 //http://developerweb.net/viewtopic.php?id=3196
 
 using namespace std;
-#define buffer_size 512
+#define DATA_BUFFER_SIZE 512
+#define TOTAL_BUFFER_SIZE 524
 struct addrinfo hints, *infoptr;
 
 int main(int argc, char* argv[]){
@@ -45,7 +47,7 @@ int main(int argc, char* argv[]){
 
 
   int clientSocket, portNum, nBytes;
-  char buffer[buffer_size];
+  char buffer[DATA_BUFFER_SIZE];
   struct sockaddr_in serverAddr;
   socklen_t addr_size;
 
@@ -61,7 +63,7 @@ int main(int argc, char* argv[]){
   /*Initialize size variable to be used later on*/
   addr_size = sizeof serverAddr;
 
-  ifstream input (file_name,  ios::binary);
+  ifstream input (file_name, ios::binary);
   if(!input.is_open()){
       cerr << "ERROR: cannot open the file" << endl;
       exit(EXIT_FAILURE);
@@ -71,28 +73,24 @@ int main(int argc, char* argv[]){
 
   while(1){
     memset(buffer, '\0', sizeof(buffer));
-    // shared_ptr<packet> pack(new packet(buffer, buffer_size, 12345, 4321, 0, 4));
-    // std::stringstream ss;
-    // ss.read((char*)&pack, sizeof(pack));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
-
-    if (sendto(clientSocket,buffer,bytes_send,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
-        perror("send to");
-        exit(EXIT_FAILURE);
-    }
+    packet pack(buffer, DATA_BUFFER_SIZE, 12345, 4321, 1, 4);
 
     if (bytes_send == 0){
         cout << "done with sending file" << endl;
         break;
     }
 
+    if (sendto(clientSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
+        perror("send to");
+        exit(EXIT_FAILURE);
+    }
 
     /*Receive message from server*/
 //                nBytes = recvfrom(clientSocket,buffer,1024,0,NULL, NULL);
 //    printf("Received from server: %s\n",buffer);
 
   }
-
 
   input.close();
   close(clientSocket);

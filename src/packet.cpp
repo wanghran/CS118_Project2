@@ -11,8 +11,6 @@ packet::packet(char *send_buffer, int buffer_size, unsigned int seq_num,
                unsigned int ack_num, unsigned short id, unsigned short flag) : header(seq_num, ack_num, id, flag)
 {
   // Encoder.
-  cout << "$$ header.seq_num " << header.seq_num << endl;
-  cout << sizeof(header.seq_num) << endl;
   char *ptr = total_data;
   ptr = memcopy_send(ptr, (void *)&header.seq_num, sizeof(header.seq_num));
   ptr = memcopy_send(ptr, (void *)&header.ack_num, sizeof(header.ack_num));
@@ -25,8 +23,6 @@ packet::packet(char *send_buffer, int buffer_size, unsigned int seq_num,
 packet::packet(char *recv_buffer)
 {
   // Decoder.
-  cout << "$$ header.seq_num" << header.seq_num << endl;
-  cout << sizeof(header.seq_num) << endl;
   char *ptr = recv_buffer;
   ptr = memcopy_recv((void *)&header.seq_num, ptr, sizeof(header.seq_num));
   ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));

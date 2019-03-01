@@ -39,6 +39,8 @@ add_library(lib_packet src/packet.cpp)
 # TODO(!): Update executable name, srcs, and deps
 add_executable(server src/server.cpp)
 add_executable(client src/client.cpp)
+target_link_libraries(server lib_packet lib_header)
+target_link_libraries(client lib_packet lib_header)
 
 # TODO(!): Update test executable name, srcs, and deps
 add_executable(header_test tests/tcp_header_test.cpp)

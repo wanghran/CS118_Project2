@@ -21,7 +21,8 @@
 
 using namespace std;
 
-#define buffer_size 512
+#define DATA_BUFFER_SIZE 512
+#define TOTAL_BUFFER_SIZE 524
 int thread_id = 0;
 static const int num_threads = 11;
 
@@ -66,7 +67,7 @@ int main(int argc, char* argv[]){
 
 
   int udpSocket, nBytes;
-  char buffer[buffer_size];
+  char buffer[TOTAL_BUFFER_SIZE];
   struct sockaddr_in serverAddr, clientAddr;
   struct sockaddr_storage serverStorage;
   socklen_t addr_size, client_addr_size;
@@ -88,7 +89,7 @@ int main(int argc, char* argv[]){
 
 
 // save to file
-  char file_name[buffer_size+12];
+  char file_name[30];
   sprintf(file_name,"%s/%d.file", save_directory, 1);
 
   ofstream output(file_name, ios::out | ios::trunc | ios::binary);
@@ -96,9 +97,17 @@ int main(int argc, char* argv[]){
 
   while(1){
     memset(buffer, '\0', sizeof(buffer));
-    nBytes = recvfrom(udpSocket,buffer,1024,0,(struct sockaddr *)&serverStorage, &addr_size);
+    nBytes = recvfrom(udpSocket,buffer,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverStorage, &addr_size);
 
-    cout << buffer << endl;
+    // cout << buffer << endl;
+    packet recv_pack(buffer);
+  
+    cout << "received byte " << nBytes << endl;
+    cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
+    cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
+    cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
+    cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
+    cout << "recv_pack.data " << recv_pack.data << endl;
 
     if (nBytes == -1){
         cerr << "ERROR: byte receive error";
@@ -110,7 +119,7 @@ int main(int argc, char* argv[]){
         break;
     }
 
-    output.write(buffer, nBytes);
+    output.write(recv_pack.data, DATA_BUFFER_SIZE);
     printf("server received %d bytes\n", nBytes);
 
 //    sendto(udpSocket,buffer,nBytes,0,(struct sockaddr *)&serverStorage,addr_size);
