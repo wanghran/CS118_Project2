@@ -125,7 +125,7 @@ int main(int argc, char* argv[]){
 //    sendto(udpSocket,buffer,nBytes,0,(struct sockaddr *)&serverStorage,addr_size);
   }
 
-//  output.close();
+ output.close();
 //  close(udpSocket);
   return 0;
 }

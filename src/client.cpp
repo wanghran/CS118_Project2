@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
 
 
   int clientSocket, portNum, nBytes;
-  char buffer[DATA_BUFFER_SIZE];
+  char buffer[DATA_BUFFER_SIZE - 1]; //the 512th byte in the buffer is set to be \0, only read 511
   struct sockaddr_in serverAddr;
   socklen_t addr_size;
 

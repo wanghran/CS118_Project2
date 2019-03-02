@@ -7,3 +7,5 @@ build/*
 .DS_Store
 .vscode
 *.pdf
+tests/files
+**/save
