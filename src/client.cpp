@@ -74,16 +74,18 @@ int main(int argc, char* argv[]){
   while(1){
     memset(buffer, '\0', sizeof(buffer));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
+    cout << "byte send: " << bytes_send << endl;
     packet pack(buffer, DATA_BUFFER_SIZE, 12345, 4321, 1, 4);
+
+
+    if (sendto(clientSocket,pack.total_data,bytes_send+12,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
+        perror("send to");
+        exit(EXIT_FAILURE);
+    }
 
     if (bytes_send == 0){
         cout << "done with sending file" << endl;
         break;
-    }
-
-    if (sendto(clientSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
-        perror("send to");
-        exit(EXIT_FAILURE);
     }
 
     /*Receive message from server*/

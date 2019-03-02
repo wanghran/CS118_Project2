@@ -97,7 +97,7 @@ int main(int argc, char* argv[]){
 
   while(1){
     memset(buffer, '\0', sizeof(buffer));
-    nBytes = recvfrom(udpSocket,buffer,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverStorage, &addr_size);
+    nBytes = recvfrom(udpSocket,buffer,sizeof(buffer),0,(struct sockaddr *)&serverStorage, &addr_size);
 
     // cout << buffer << endl;
     packet recv_pack(buffer);
@@ -115,11 +115,12 @@ int main(int argc, char* argv[]){
         close(udpSocket);
     }
 
-    if (nBytes == 0){
+
+    if (nBytes == 12){
         break;
     }
 
-    output.write(recv_pack.data, DATA_BUFFER_SIZE);
+    output.write(recv_pack.data, nBytes-12);
     printf("server received %d bytes\n", nBytes);
 
 //    sendto(udpSocket,buffer,nBytes,0,(struct sockaddr *)&serverStorage,addr_size);
