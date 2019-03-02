@@ -30,6 +30,7 @@ struct addrinfo hints, *infoptr;
 
 int main(int argc, char* argv[]){
 
+//  check num of args
   if(argc != 4){
     cerr << "ERROR: Number of arguments incorrect. Try ./client <HOSTNAME/IP> <PORT> <FILENAME>\n";
     exit(EXIT_FAILURE);
@@ -39,11 +40,30 @@ int main(int argc, char* argv[]){
   int port = atoi(argv[2]);
   char* file_name = argv[3];
 
-
+//  check ports
   if(port < 1024 || port > 65535){
     cerr << "ERROR: Port numbers incorrect. Try another one.\n";
     exit(EXIT_FAILURE);
   }
+
+//  check hostname and change hostname to ip
+  memset(&hints,0,sizeof(hints));
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
+  int result = getaddrinfo(host_name, NULL, &hints, &infoptr);
+  if (result) {
+     fprintf(stderr, "ERROR: incorrect hostname: %s\n", gai_strerror(result));
+     exit(1);
+  }
+  struct addrinfo *p;
+  char host[256];
+  for (p = infoptr; p != NULL; p = p->ai_next) {
+      getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST);
+  }
+  freeaddrinfo(infoptr);
+  puts(host);
+ //  (above) check hostname and change hostname to ip
+
 
 
   int clientSocket, portNum, nBytes;
