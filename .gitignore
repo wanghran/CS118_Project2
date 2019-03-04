@@ -9,3 +9,17 @@ build/*
 *.pdf
 tests/files
 **/save
+118_proj2_client/118_proj2_client.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+118_proj2_client/118_proj2_client.xcodeproj/project.xcworkspace/xcuserdata/yba.xcuserdatad/UserInterfaceState.xcuserstate
+118_proj2_client/118_proj2_client.xcodeproj/xcuserdata/yba.xcuserdatad/xcdebugger/Breakpoints_v2.xcbkptlist
+118_proj2_client/118_proj2_client.xcodeproj/xcuserdata/yba.xcuserdatad/xcschemes/118_proj2_client.xcscheme
+118_proj2_client/118_proj2_client.xcodeproj/xcuserdata/yba.xcuserdatad/xcschemes/xcschememanagement.plist
+118_proj2_server/118_proj2_server.xcodeproj/project.pbxproj
+118_proj2_server/118_proj2_server.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+118_proj2_server/118_proj2_server.xcodeproj/project.xcworkspace/xcuserdata/yba.xcuserdatad/UserInterfaceState.xcuserstate
+118_proj2_server/118_proj2_server.xcodeproj/xcuserdata/yba.xcuserdatad/xcschemes/118_proj2_server.xcscheme
+118_proj2_server/118_proj2_server.xcodeproj/xcuserdata/yba.xcuserdatad/xcschemes/xcschememanagement.plist
+file.txt
+118_proj2_client/
+118_proj2_server/
+
