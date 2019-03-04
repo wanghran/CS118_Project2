@@ -18,15 +18,100 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <iostream>
+#include <iomanip>
+#include <cstdint>
 
 #include "packet.hpp"
 
 //http://developerweb.net/viewtopic.php?id=3196
 
 using namespace std;
+#define SYN_ACK 6
+#define FIN_ACK 5
+#define ACK 4
+#define SYN 2
+#define FIN 1
+
 #define DATA_BUFFER_SIZE 512
 #define TOTAL_BUFFER_SIZE 524
+#define CWND 512
+#define SS_THRESH 10000
+#define MAX_ACK_SEQ 102400
+
+
 struct addrinfo hints, *infoptr;
+
+
+void printInt_32(uint32_t x)
+{
+    cout << setfill('0') << setw(8) << hex << x << '\n';
+}
+
+void printInt_16(uint16_t x)
+{
+    cout << setfill('0') << setw(4) << hex << x << '\n';
+}
+
+
+void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size){
+
+    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
+    packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
+    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+//    printInt_16(SYN_pack.header.flag);
+
+    while(1){
+        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
+        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        packet SYN_ACK_pack(SYN_ACK_buffer);
+        cout << "received byte " << nBytes_SYN_ACK << endl;
+        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
+        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
+        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
+        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
+        if (ntohs(SYN_ACK_pack.header.flag) == 6){
+             break;
+        }
+        else{
+            continue;
+        }
+
+    }
+
+}
+
+//needs to change
+void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size){
+
+    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
+    packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
+    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+//    printInt_16(SYN_pack.header.flag);
+
+    while(1){
+        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
+        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        packet SYN_ACK_pack(SYN_ACK_buffer);
+        cout << "received byte " << nBytes_SYN_ACK << endl;
+        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
+        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
+        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
+        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
+        if (ntohs(SYN_ACK_pack.header.flag) == 6){
+             break;
+        }
+        else{
+            continue;
+        }
+
+    }
+
+}
+
+
 
 int main(int argc, char* argv[]){
 
@@ -61,7 +146,7 @@ int main(int argc, char* argv[]){
       getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST);
   }
   freeaddrinfo(infoptr);
-  puts(host);
+ //  puts(host);
  //  (above) check hostname and change hostname to ip
 
 
@@ -83,6 +168,13 @@ int main(int argc, char* argv[]){
   /*Initialize size variable to be used later on*/
   addr_size = sizeof serverAddr;
 
+
+
+  syn(clientSocket,serverAddr,addr_size);
+
+
+
+// transmission actual data
   ifstream input (file_name, ios::binary);
   if(!input.is_open()){
       cerr << "ERROR: cannot open the file" << endl;
@@ -103,19 +195,25 @@ int main(int argc, char* argv[]){
         exit(EXIT_FAILURE);
     }
 
+
     if (bytes_send == 0){
         cout << "done with sending file" << endl;
         break;
     }
 
-    /*Receive message from server*/
-//                nBytes = recvfrom(clientSocket,buffer,1024,0,NULL, NULL);
-//    printf("Received from server: %s\n",buffer);
+    /*Receive ack from server*/
+
+    // regular data ack;
+//    char ACK_buffer[TOTAL_BUFFER_SIZE];
+//    int nBytes_ACK = recvfrom(clientSocket,ACK_buffer,sizeof(ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+//    packet ACK_pack(ACK_buffer);
+
+
 
   }
 
   input.close();
+//  fin(clientSocket,serverAddr,addr_size);
   close(clientSocket);
-
   return 0;
 }
