@@ -88,6 +88,8 @@ int main(int argc, char* argv[]){
 
   /*Create UDP socket*/
   udpSocket = socket(PF_INET, SOCK_DGRAM, 0);
+  //Non-blocking UDP
+  fcntl(udpSocket, F_SETFL, O_NONBLOCK);
 
   /*Configure settings in address struct*/
   serverAddr.sin_family = AF_INET;
@@ -105,60 +107,59 @@ int main(int argc, char* argv[]){
 // save to file
   char file_name[30];
   sprintf(file_name,"%s/%d.file", save_directory, 1);
-
   ofstream output(file_name, ios::out | ios::trunc | ios::binary);
 
+  fd_set readfds;
+  FD_ZERO(&readfds);
+  FD_SET(udpSocket, &readfds);
 
   while(1){
     memset(buffer, '\0', sizeof(buffer));
-    nBytes = recvfrom(udpSocket,buffer,sizeof(buffer),0,(struct sockaddr *)&clientAddr, &addr_size);
+    if (select(udpSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
+      nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
 
-    if (nBytes == -1){
-        cerr << "ERROR: byte receive error";
-        output.close();
-        close(udpSocket);
+      if (nBytes == -1){
+          cerr << "ERROR: byte receive error";
+          output.close();
+          close(udpSocket);
+      }
+
+
+      if (nBytes == 12){
+          break;
+      }
+
+      // cout << buffer << endl;
+      packet recv_pack(buffer);
+
+      printf("server received %d bytes\n", nBytes);
+      cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
+      cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
+      cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
+      cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
+      cout << "recv_pack.data " << recv_pack.data << "\n" <<endl;
+
+
+      if (tcp_header::give_flag(recv_pack.header) == SYN){
+          char local_buffer[DATA_BUFFER_SIZE - 1];
+          memset(local_buffer, '\0', sizeof(local_buffer));
+          unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
+          packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
+          sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+          continue;
+      }
+
+        // fin needs to change
+      if (tcp_header::give_flag(recv_pack.header) == FIN){
+          char local_buffer[DATA_BUFFER_SIZE - 1];
+          memset(local_buffer, '\0', sizeof(local_buffer));
+          unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
+          packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
+          sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+          continue;
+      }
+      output.write(recv_pack.data, nBytes-12);
     }
-
-
-    if (nBytes == 12){
-        break;
-    }
-
-    // cout << buffer << endl;
-    packet recv_pack(buffer);
-  
-    printf("server received %d bytes\n", nBytes);
-    cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
-    cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
-    cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
-    cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
-    cout << "recv_pack.data " << recv_pack.data << "\n" <<endl;
-
-
-    if (ntohs(recv_pack.header.flag) == SYN){
-        char local_buffer[DATA_BUFFER_SIZE - 1];
-        memset(local_buffer, '\0', sizeof(local_buffer));
-        unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-        packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
-        sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
-        continue;
-    }
-
-     // fin needs to change
-    if (ntohs(recv_pack.header.flag) == FIN){
-        char local_buffer[DATA_BUFFER_SIZE - 1];
-        memset(local_buffer, '\0', sizeof(local_buffer));
-        unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-        packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
-        sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
-        continue;
-    }
-// normal packet received
-
-    output.write(recv_pack.data, nBytes-12);
-
-
-//    sendto(udpSocket,buffer,nBytes,0,(struct sockaddr *)&serverStorage,addr_size);
   }
 
  output.close();

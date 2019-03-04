@@ -22,9 +22,9 @@ class tcp_header
     tcp_header();
     tcp_header(uint32_t seq_num, uint32_t ack_num,
                uint16_t ID, uint16_t flag);
-    static uint32_t give_seq(uint32_t network_seq_num);
-    static uint32_t give_ack(uint32_t network_ack_num);
-    static uint16_t give_id(uint16_t network_ID);
-    static uint16_t give_flag(uint16_t network_flag);
+    static uint32_t give_seq(tcp_header &recv_header);
+    static uint32_t give_ack(tcp_header &recv_header);
+    static uint16_t give_id(tcp_header &recv_header);
+    static uint16_t give_flag(tcp_header &recv_header);
 };
 #endif

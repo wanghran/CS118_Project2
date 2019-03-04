@@ -37,22 +37,22 @@ tcp_header::tcp_header(unsigned int seq_num, unsigned int ack_num,
   tcp_header::set_flag(flag);
 }
 
-uint32_t tcp_header::give_seq(uint32_t network_seq_num)
+uint32_t tcp_header::give_seq(tcp_header &recv_header)
 {
-  return ntohl(network_seq_num);
+  return ntohl(recv_header.seq_num);
 }
 
-uint32_t tcp_header::give_ack(uint32_t network_ack_num)
+uint32_t tcp_header::give_ack(tcp_header &recv_header)
 {
-  return ntohl(network_ack_num);
+  return ntohl(recv_header.ack_num);
 }
 
-uint16_t tcp_header::give_id(uint16_t network_ID)
+uint16_t tcp_header::give_id(tcp_header &recv_header)
 {
-  return ntohs(network_ID);
+  return ntohs(recv_header.ID);
 }
 
-uint16_t tcp_header::give_flag(uint16_t network_flag)
+uint16_t tcp_header::give_flag(tcp_header &recv_header)
 {
-  return ntohs(network_flag);
+  return ntohs(recv_header.flag);
 }
