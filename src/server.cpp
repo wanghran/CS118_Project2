@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <thread>
 #include <cstring>
+#include <deque>
 
 #include "packet.hpp"
 
@@ -25,7 +26,8 @@ using namespace std;
 #define TOTAL_BUFFER_SIZE 524
 int thread_id = 0;
 static const int num_threads = 11;
-
+int SS_THRESH = 10000;
+int cgwn_size = 1; //should be 512, will change later
 
 void sig_quit_handler(int s)
 {

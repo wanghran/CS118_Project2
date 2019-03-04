@@ -18,6 +18,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <deque>
 
 #include "packet.hpp"
 
@@ -27,6 +28,9 @@ using namespace std;
 #define DATA_BUFFER_SIZE 512
 #define TOTAL_BUFFER_SIZE 524
 struct addrinfo hints, *infoptr;
+
+int SS_THRESH = 10000;
+int cgwn_size = 1; //should be 512, will change later 
 
 int main(int argc, char* argv[]){
 
@@ -91,7 +95,7 @@ int main(int argc, char* argv[]){
 
 
 
-  while(1){
+  while(packet_num < cgwn_size){
     memset(buffer, '\0', sizeof(buffer));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
     cout << "byte send: " << bytes_send << endl;
