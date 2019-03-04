@@ -18,13 +18,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-<<<<<<< HEAD
-#include <deque>
-=======
 #include <iostream>
 #include <iomanip>
 #include <cstdint>
->>>>>>> 4b28db9b2255f74e1e8d370a62d4e91965be12f7
 
 #include "packet.hpp"
 
@@ -187,7 +183,7 @@ int main(int argc, char* argv[]){
 
 
 
-  while(packet_num < cgwn_size){
+  while(1){
     memset(buffer, '\0', sizeof(buffer));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
     cout << "byte send: " << bytes_send << endl;

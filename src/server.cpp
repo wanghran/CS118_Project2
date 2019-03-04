@@ -39,7 +39,6 @@ using namespace std;
 
 int thread_id = 0;
 static const int num_threads = 11;
-int SS_THRESH = 10000;
 int cgwn_size = 1; //should be 512, will change later
 
 void sig_quit_handler(int s)
