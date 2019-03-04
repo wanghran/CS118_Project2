@@ -175,7 +175,7 @@ int main(int argc, char* argv[]){
 
 
     cout << "Client " << port << endl;
-//  syn(clientSocket,serverAddr,addr_size);
+  syn(clientSocket,serverAddr,addr_size);
 
 
 

@@ -1,32 +1,29 @@
-#include <bitset>
-#include "tcp_header.hpp"
 #include <cassert>
 #include <netinet/in.h>
 #include <iostream>
-// #include <stdio.h>
-// #include <stdlib.h>
+#include <cstdint>
+#include "tcp_header.hpp"
 
 using namespace std;
 
 tcp_header::tcp_header() {}
 
-
-void tcp_header::set_seq_num(unsigned int seq_num)
+void tcp_header::set_seq_num(uint32_t seq_num)
 {
   this->seq_num = htonl(seq_num);
 }
 
-void tcp_header::set_ack_num(unsigned int ack_num)
+void tcp_header::set_ack_num(uint32_t ack_num)
 {
   this->ack_num = htonl(ack_num);
 }
 
-void tcp_header::set_ID(unsigned short ID)
+void tcp_header::set_ID(uint16_t ID)
 {
   this->ID = htons(ID);
 }
 
-void tcp_header::set_flag(unsigned short flag)
+void tcp_header::set_flag(uint16_t flag)
 {
   this->flag = htons(flag);
 }
@@ -40,26 +37,22 @@ tcp_header::tcp_header(unsigned int seq_num, unsigned int ack_num,
   tcp_header::set_flag(flag);
 }
 
-// unsigned int tcp_header::give_seq(std::string header)
-// {
-//   std::bitset<32> seq(header.substr(0, 32));
-//   return (unsigned int)seq.to_ulong();
-// }
+uint32_t tcp_header::give_seq(tcp_header &recv_header)
+{
+  return ntohl(recv_header.seq_num);
+}
 
-// unsigned int tcp_header::give_ack(std::string header)
-// {
-//   std::bitset<32> ack(header.substr(32, 64));
-//   return (unsigned int)ack.to_ulong();
-// }
+uint32_t tcp_header::give_ack(tcp_header &recv_header)
+{
+  return ntohl(recv_header.ack_num);
+}
 
-// unsigned short tcp_header::give_id(std::string header)
-// {
-//   std::bitset<16> id(header.substr(64, 80));
-//   return (unsigned short)id.to_ulong();
-// }
+uint16_t tcp_header::give_id(tcp_header &recv_header)
+{
+  return ntohs(recv_header.ID);
+}
 
-// unsigned short tcp_header::give_flag(std::string header)
-// {
-//   std::bitset<16> flag(header.substr(80, 96));
-//   return (unsigned short)flag.to_ulong();
-// }
+uint16_t tcp_header::give_flag(tcp_header &recv_header)
+{
+  return ntohs(recv_header.flag);
+}
