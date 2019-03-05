@@ -65,9 +65,9 @@ public:
 
 void init_connection(int argc, char* argv[], int &port, Conn &conn,
                      string &file_name);
-void syn(Conn &conn);
+Packet syn(Conn &conn);
 void fin(Conn &conn);
-ClientData gen_client_data(const string &file_name);
+ClientData gen_client_data(const string &file_name, Packet syn_ack);
 bool done(const ClientData &client_data);
 void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn);
 void printInt_32(uint32_t x);
@@ -82,10 +82,10 @@ int main(int argc, char* argv[]){
     
     
     cout << "Client " << port << endl;
-    syn(conn);
+    Packet syn_ack = syn(conn);
     
     
-    ClientData client_data = gen_client_data(file_name);
+    ClientData client_data = gen_client_data(file_name,syn_ack);
     
     while(!done(client_data)) {
         
@@ -115,7 +115,7 @@ int main(int argc, char* argv[]){
     }
     
     //    input.close();
-    fin(conn);
+//    fin(conn);
     close(conn.clientSocket);
     return 0;
 }
@@ -175,7 +175,7 @@ void init_connection(int argc, char* argv[], int &port, Conn &conn,
 }
 
 
-ClientData gen_client_data(const string &file_name) {
+ClientData gen_client_data(const string &file_name, Packet syn_ack) {
     char buffer[READ_DATA_BUFFER_SIZE]; //the 512th byte in the buffer is set to be \0, only read 511
     ifstream input(file_name, ios::binary);
     if(!input.is_open()){
@@ -190,7 +190,7 @@ ClientData gen_client_data(const string &file_name) {
             break;
         }
         cout << "Packet contains " << bytes_send << " bytes of data" << endl;
-        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, 1, 4))); // TODO: properly set the nums
+        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, Header::give_id(syn_ack.header), 4))); // TODO: properly set the nums
     }
     input.close();
     cout << "Created " << rtn.packets.size() << " packets" << endl;
@@ -218,7 +218,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 }
 
 
-void syn(Conn &conn) {
+Packet syn(Conn &conn) {
     
     char SYN_buffer[READ_DATA_BUFFER_SIZE];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
@@ -239,7 +239,7 @@ void syn(Conn &conn) {
         cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
         cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
         if (ntohs(SYN_ACK_pack.header.flag) == 6){
-            break;
+           return SYN_ACK_pack;
         }
         else{
             continue;

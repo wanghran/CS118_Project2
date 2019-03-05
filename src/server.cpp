@@ -36,6 +36,7 @@ using std::map;
 #define ACK 4
 #define SYN 2
 #define FIN 1
+#define NO_FLAG 0
 
 #define DATA_BUFFER_SIZE 512
 #define TOTAL_BUFFER_SIZE 524
@@ -48,10 +49,15 @@ struct client_stats
   int seq_num = 0;
   int last_legit_ack_num = 0;
   deque<Packet*> packet_ptr_buffer;
+  struct sockaddr_in client_address;
+  socklen_t client_addr_size;
+  char client_file[30];
 };
 
 
 int cgwn_size = 1; //should be 512, will change later
+  // create client id: client stats mapping
+map<int, client_stats> clients_map;
 
 void sig_quit_handler(int s)
 {
@@ -65,8 +71,8 @@ void sig_term_handler(int s)
     exit(0);
 }
 
-void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
-void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
+void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack,  char *save_directory);
+void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack, int nBytes);
 void fin_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
 
 int main(int argc, char* argv[]){
@@ -119,34 +125,19 @@ int main(int argc, char* argv[]){
 
 
 // save to file
-  char file_name[30];
-  sprintf(file_name,"%s/%d.file", save_directory, 1);
-  ofstream output(file_name, ios::out | ios::trunc | ios::binary);
 
   fd_set readfds;
   FD_ZERO(&readfds);
   FD_SET(udpSocket, &readfds);
 
-  // create client id: client stats mapping
-  map<int, client_stats> clients_map;
 
   while(1){
-  
+
     memset(buffer, '\0', sizeof(buffer));
 
     if (select(udpSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
       nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
 
-      if (nBytes == -1){
-          cerr << "ERROR: byte receive error";
-          output.close();
-          close(udpSocket);
-      }
-      if (nBytes == 12){
-          output.close();
-          close(udpSocket);
-//          break;
-      }
 
 
       Packet recv_pack(buffer);
@@ -159,12 +150,11 @@ int main(int argc, char* argv[]){
 
 
       if (Header::give_flag(recv_pack.header) == SYN){
-
-          syn_handler(udpSocket,clientAddr,addr_size,recv_pack);
+          syn_handler(udpSocket,clientAddr,addr_size,recv_pack,save_directory);
           continue;
       }
-      else if (Header::give_flag(recv_pack.header) == ACK || Header::give_flag(recv_pack.header) == 0 ){
-          normal_packet_handler(udpSocket,clientAddr,addr_size,recv_pack);
+      else if (Header::give_flag(recv_pack.header) == ACK || Header::give_flag(recv_pack.header) == NO_FLAG ){
+          normal_packet_handler(udpSocket,clientAddr,addr_size,recv_pack,nBytes);
           continue;
        }
         // fin needs to change
@@ -172,23 +162,64 @@ int main(int argc, char* argv[]){
           fin_handler(udpSocket,clientAddr,addr_size,recv_pack);
           continue;
       }
-      output.write(recv_pack.data, nBytes-12);
     }
   }
 }
 
 
 
-void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack){
+void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack, char *save_directory){
+
+    int id = clients_map.size() + 1;
+    client_stats c_stats;
+    char file_name[30];
+    sprintf(file_name,"%s/%d.file", save_directory, id);
+
+
+    strncpy(c_stats.client_file, file_name, 30);
+    cout << c_stats.client_file;
+    c_stats.client_address = clientAddr;
+    c_stats.client_addr_size = addr_size;
+
+
     char local_buffer[DATA_BUFFER_SIZE - 1];
     memset(local_buffer, '\0', sizeof(local_buffer));
     unsigned int ack_reply =  Header::give_seq(recv_pack.header) + 1;
-    Packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
+    Packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, id, SYN_ACK);  // 1 need to change based on connection id;
+
+   // update share ptr deck
+   // update seq number
+   // update legit
+
+    clients_map[id] = c_stats;
     sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+
+
+//    ofstream output(file_name, ios::out | ios::trunc | ios::binary);
+//
 
 }
 
-void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack){
+void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack, int nBytes){
+
+      int id = Header::give_id(recv_pack.header);
+      client_stats c_stats = clients_map[id];
+      cout << c_stats.client_file << endl;
+      ofstream output(c_stats.client_file, ios::out | ios::app | ios::binary);
+      if (nBytes == -1){
+          cerr << "ERROR: byte receive error";
+          output.close();
+          close(udpSocket);
+      }
+      if (nBytes == 12){
+          output.close();
+          close(udpSocket);
+//          break;
+      }
+
+      ////packet is in order
+      output.write(recv_pack.data, nBytes-12);
+
 
 
 }
