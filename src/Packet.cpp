@@ -10,39 +10,51 @@ Packet::Packet() {}
 Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
                unsigned int ack_num, unsigned short id, unsigned short flag) : header(seq_num, ack_num, id, flag)
 {
-  // Encoder.
-  char *ptr = total_data;
-  ptr = memcopy_send(ptr, (void *)&header.seq_num, sizeof(header.seq_num));
-  ptr = memcopy_send(ptr, (void *)&header.ack_num, sizeof(header.ack_num));
-  ptr = memcopy_send(ptr, (void *)&header.ID, sizeof(header.ID));
-  ptr = memcopy_send(ptr, (void *)&header.flag, sizeof(header.flag));
-  ptr = memcopy_send(ptr, send_buffer, buffer_size);
-  // assert(total_data[TOTAL_PACKET_SIZE - 1] == '\0');
+    // Encoder.
+    char *ptr = total_data;
+    data_bytes = buffer_size;
+    ptr = memcopy_send(ptr, (void *)&header.seq_num, sizeof(header.seq_num));
+    ptr = memcopy_send(ptr, (void *)&header.ack_num, sizeof(header.ack_num));
+    ptr = memcopy_send(ptr, (void *)&header.ID, sizeof(header.ID));
+    ptr = memcopy_send(ptr, (void *)&header.flag, sizeof(header.flag));
+    ptr = memcopy_send(ptr, send_buffer, buffer_size);
+    // assert(total_data[TOTAL_PACKET_SIZE - 1] == '\0');
 }
 
 Packet::Packet(char *recv_buffer)
 {
-  // Decoder.
-  char *ptr = recv_buffer;
-  ptr = memcopy_recv((void *)&header.seq_num, ptr, sizeof(header.seq_num));
-  ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));
-  ptr = memcopy_recv((void *)&header.ID, ptr, sizeof(header.ID));
-  ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
-  ptr = memcopy_recv(data, ptr, DATA_SIZE);
-  assert(data[DATA_SIZE] == '\0');
+    // Decoder.
+    char *ptr = recv_buffer;
+    ptr = memcopy_recv((void *)&header.seq_num, ptr, sizeof(header.seq_num));
+    ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));
+    ptr = memcopy_recv((void *)&header.ID, ptr, sizeof(header.ID));
+    ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
+    ptr = memcopy_recv(data, ptr, DATA_SIZE);
+    assert(data[DATA_SIZE] == '\0');
 }
 
 Packet::~Packet() {}
 
+void Packet::send_packet(const Conn &conn) {
+    if (sendto(conn.clientSocket, total_data,
+               data_bytes + HEADER_SIZE, 0,
+               (struct sockaddr *)&conn.serverAddr, conn.addr_size) < 0) {
+        perror("send to");
+        exit(EXIT_FAILURE);
+    } else {
+        state = SENT;
+    }
+}
+
 char *Packet::memcopy_send(char *dest, void *src, size_t stride) {
-  memcpy(dest, src, stride);
-  dest += stride;
-  return dest;
+    memcpy(dest, src, stride);
+    dest += stride;
+    return dest;
 }
 
 char *Packet::memcopy_recv(void *dest, char *src, size_t stride)
 {
-  memcpy(dest, src, stride);
-  src += stride;
-  return src;
+    memcpy(dest, src, stride);
+    src += stride;
+    return src;
 }

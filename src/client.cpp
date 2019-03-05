@@ -14,8 +14,6 @@
 #include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <iostream>
@@ -25,9 +23,7 @@
 #include <memory>
 
 #include "Packet.hpp"
-
-//http://developerweb.net/viewtopic.php?id=3196
-
+#include "Conn.hpp"
 //using namespace std;
 
 using std::cout;
@@ -40,6 +36,7 @@ using std::ifstream;
 using std::ios;
 using std::vector;
 using std::shared_ptr;
+using std::string;
 
 #define SYN_ACK 6
 #define FIN_ACK 5
@@ -47,6 +44,7 @@ using std::shared_ptr;
 #define SYN 2
 #define FIN 1
 
+#define READ_DATA_BUFFER_SIZE 511
 #define DATA_BUFFER_SIZE 512
 #define TOTAL_BUFFER_SIZE 524
 #define CWND 512
@@ -56,10 +54,6 @@ using std::shared_ptr;
 
 struct addrinfo hints, *infoptr;
 
-void printInt_32(uint32_t x);
-void printInt_16(uint16_t x);
-void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size);
-void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size);
 
 class ClientData {
 public:
@@ -69,141 +63,175 @@ public:
 };
 
 
+void init_connection(int argc, char* argv[], int &port, Conn &conn,
+                     string &file_name);
+void syn(Conn &conn);
+void fin(Conn &conn);
+ClientData gen_client_data(const string &file_name);
+bool done(const ClientData &client_data);
+void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn);
+void printInt_32(uint32_t x);
+void printInt_16(uint16_t x);
+
 
 int main(int argc, char* argv[]){
-
-//  check num of args
-  if(argc != 4){
-    cerr << "ERROR: Number of arguments incorrect. Try ./client <HOSTNAME/IP> <PORT> <FILENAME>\n";
-    exit(EXIT_FAILURE);
-  }
-
-  char* host_name = argv[1];
-  int port = atoi(argv[2]);
-  char* file_name = argv[3];
-
-//  check ports
-  if(port < 1024 || port > 65535){
-    cerr << "ERROR: Port numbers incorrect. Try another one.\n";
-    exit(EXIT_FAILURE);
-  }
-
-//  check hostname and change hostname to ip
-  memset(&hints,0,sizeof(hints));
-  hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
-  int result = getaddrinfo(host_name, NULL, &hints, &infoptr);
-  if (result) {
-     fprintf(stderr, "ERROR: incorrect hostname: %s\n", gai_strerror(result));
-     exit(1);
-  }
-  struct addrinfo *p;
-  char host[256];
-  for (p = infoptr; p != NULL; p = p->ai_next) {
-      getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST);
-  }
-  freeaddrinfo(infoptr);
- //  puts(host);
- //  (above) check hostname and change hostname to ip
-
-
-
-  int clientSocket, portNum, nBytes;
-  char buffer[DATA_BUFFER_SIZE - 1]; //the 512th byte in the buffer is set to be \0, only read 511
-  struct sockaddr_in serverAddr;
-  socklen_t addr_size;
-
-  /*Create UDP socket*/
-  clientSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    int port;
+    Conn conn;
+    string file_name;
+    init_connection(argc, argv, port, conn, file_name);
     
-    if (clientSocket< 0) {
+    
+    cout << "Client " << port << endl;
+    syn(conn);
+    
+    
+    ClientData client_data = gen_client_data(file_name);
+    
+    while(!done(client_data)) {
+        
+        send_as_many_packets_as_possible(client_data, conn);
+        
+        
+        //        if (sendto(clientSocket,pack.total_data,bytes_send+12,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
+        //            perror("send to");
+        //            exit(EXIT_FAILURE);
+        //        }
+        //
+        //
+        //        if (bytes_send == 0){
+        //            cout << "done with sending file" << endl;
+        //            break;
+        //        }
+        
+        /*Receive ack from server*/
+        
+        // regular data ack;
+        //    char ACK_buffer[TOTAL_BUFFER_SIZE];
+        //    int nBytes_ACK = recvfrom(clientSocket,ACK_buffer,sizeof(ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        //    packet ACK_pack(ACK_buffer);
+        
+        
+        
+    }
+    
+    //    input.close();
+    fin(conn);
+    close(conn.clientSocket);
+    return 0;
+}
+
+void init_connection(int argc, char* argv[], int &port, Conn &conn,
+                     string &file_name) {
+    //  check num of args
+    if(argc != 4){
+        cerr << "ERROR: Number of arguments incorrect. Try ./client <HOSTNAME/IP> <PORT> <FILENAME>\n";
+        exit(EXIT_FAILURE);
+    }
+    
+    char* host_name = argv[1];
+    port = atoi(argv[2]);
+    file_name = argv[3];
+    
+    //  check ports
+    if(port < 1024 || port > 65535){
+        cerr << "ERROR: Port numbers incorrect. Try another one.\n";
+        exit(EXIT_FAILURE);
+    }
+    
+    //  check hostname and change hostname to ip
+    memset(&hints,0,sizeof(hints));
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
+    int result = getaddrinfo(host_name, NULL, &hints, &infoptr);
+    if (result) {
+        fprintf(stderr, "ERROR: incorrect hostname: %s\n", gai_strerror(result));
+        exit(1);
+    }
+    struct addrinfo *p;
+    char host[256];
+    for (p = infoptr; p != NULL; p = p->ai_next) {
+        getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof (host), NULL, 0, NI_NUMERICHOST);
+    }
+    freeaddrinfo(infoptr);
+    //  puts(host);
+    //  (above) check hostname and change hostname to ip
+    
+    /*Create UDP socket*/
+    conn.clientSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    if (conn.clientSocket< 0) {
         fprintf(stderr, "ERROR: socket creation failed\n");
         exit(1);
     }
-
-  /*Configure settings in address struct*/
-  serverAddr.sin_family = AF_INET;
-  serverAddr.sin_port = htons(port);
-  serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-  memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-
-  /*Initialize size variable to be used later on*/
-  addr_size = sizeof serverAddr;
-
-
-    cout << "Client " << port << endl;
-  syn(clientSocket,serverAddr,addr_size);
+    
+    /*Configure settings in address struct*/
+    conn.serverAddr.sin_family = AF_INET;
+    conn.serverAddr.sin_port = htons(port);
+    conn.serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(conn.serverAddr.sin_zero, '\0', sizeof conn.serverAddr.sin_zero);
+    
+    /*Initialize size variable to be used later on*/
+    conn.addr_size = sizeof conn.serverAddr;
+}
 
 
-
-// transmission actual data
-  ifstream input (file_name, ios::binary);
-  if(!input.is_open()){
-      cerr << "ERROR: cannot open the file" << endl;
-      exit(EXIT_FAILURE);
-  }
-
-
-
-  while(1){
-    memset(buffer, '\0', sizeof(buffer));
-    int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
-    cout << "byte send: " << bytes_send << endl;
-    Packet pack(buffer, DATA_BUFFER_SIZE, 12345, 4321, 1, 4);
-
-
-    if (sendto(clientSocket,pack.total_data,bytes_send+12,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
-        perror("send to");
+ClientData gen_client_data(const string &file_name) {
+    char buffer[READ_DATA_BUFFER_SIZE]; //the 512th byte in the buffer is set to be \0, only read 511
+    ifstream input(file_name, ios::binary);
+    if(!input.is_open()){
+        cerr << "ERROR: cannot open the file" << endl;
         exit(EXIT_FAILURE);
     }
-
-
-    if (bytes_send == 0){
-        cout << "done with sending file" << endl;
-        break;
+    ClientData rtn;
+    while(1) {
+        memset(buffer, '\0', sizeof(buffer));
+        int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
+        if (bytes_send == 0) {
+            break;
+        }
+        cout << "Packet contains " << bytes_send << " bytes of data" << endl;
+        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, 1, 4))); // TODO: properly set the nums
     }
-
-    /*Receive ack from server*/
-
-    // regular data ack;
-//    char ACK_buffer[TOTAL_BUFFER_SIZE];
-//    int nBytes_ACK = recvfrom(clientSocket,ACK_buffer,sizeof(ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
-//    packet ACK_pack(ACK_buffer);
-
-
-
-  }
-
-  input.close();
-//  fin(clientSocket,serverAddr,addr_size);
-  close(clientSocket);
-  return 0;
+    input.close();
+    cout << "Created " << rtn.packets.size() << " packets" << endl;
+    return rtn;
 }
 
-
-
-void printInt_32(uint32_t x)
-{
-    cout << setfill('0') << setw(8) << hex << x << '\n';
-}
-
-void printInt_16(uint16_t x)
-{
-    cout << setfill('0') << setw(4) << hex << x << '\n';
-}
-
-
-void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
+void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn) {
+    int cnt = 0;
+    for (auto const& packet_ptr : client_data.packets) {
+        packet_ptr->send_packet(conn);
+        cnt += 1;
+    }
+    cout << "Sent " << cnt << " packets" << endl;
     
-    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    //    if (sendto(clientSocket,pack.total_data,bytes_send+12,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
+    //        perror("send to");
+    //        exit(EXIT_FAILURE);
+    //    }
+    //
+    //
+    //    if (bytes_send == 0){
+    //        cout << "done with sending file" << endl;
+    //        break;
+    //    }
+}
+
+
+void syn(Conn &conn) {
+    
+    char SYN_buffer[READ_DATA_BUFFER_SIZE];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
-    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+    SYN_pack.send_packet(conn);
+//    sendto(conn.clientSocket, SYN_pack.total_data, TOTAL_BUFFER_SIZE, 0,
+//           (struct sockaddr *)&conn.serverAddr, conn.addr_size);
     //    printInt_16(SYN_pack.header.flag);
     
     while(1){
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
-        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        cout << "Waiting to receive from server..." << endl;
+        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
         Packet SYN_ACK_pack(SYN_ACK_buffer);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
@@ -222,17 +250,19 @@ void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
 }
 
 //needs to change
-void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
+void fin(Conn &conn) {
     
-    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    char SYN_buffer[READ_DATA_BUFFER_SIZE];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
-    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+    SYN_pack.send_packet(conn);
+//    sendto(conn.clientSocket, SYN_pack.total_data, TOTAL_BUFFER_SIZE, 0,
+//           (struct sockaddr *)&conn.serverAddr, conn.addr_size);
     //    printInt_16(SYN_pack.header.flag);
     
     while(1){
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
-        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
         Packet SYN_ACK_pack(SYN_ACK_buffer);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
@@ -253,6 +283,25 @@ void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
 
 
 
+bool done(const ClientData &client_data) {
+    for (auto const& packet_ptr : client_data.packets) {
+        if (packet_ptr->state != SENT) { // TODO: change SENT to ACKED
+            return false;
+        }
+    }
+    return true;
+}
+
+
+void printInt_32(uint32_t x)
+{
+    cout << setfill('0') << setw(8) << hex << x << '\n';
+}
+
+void printInt_16(uint16_t x)
+{
+    cout << setfill('0') << setw(4) << hex << x << '\n';
+}
 
 
 
