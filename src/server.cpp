@@ -17,6 +17,8 @@
 #include <thread>
 #include <cstring>
 #include <deque>
+#include <memory>
+#include <map>
 
 #include "Packet.hpp"
 
@@ -25,7 +27,8 @@ using std::endl;
 using std::cerr;
 using std::ofstream;
 using std::ios;
-
+using std::deque;
+using std::map;
 
 
 #define SYN_ACK 6
@@ -40,10 +43,14 @@ using std::ios;
 #define SS_THRESH 10000
 #define MAX_ACK_SEQ 102400
 
+struct client_stats
+{
+  int seq_num = 0;
+  int last_legit_ack_num = 0;
+  deque<Packet*> packet_ptr_buffer;
+};
 
 
-int thread_id = 0;
-static const int num_threads = 11;
 int cgwn_size = 1; //should be 512, will change later
 
 void sig_quit_handler(int s)
@@ -58,26 +65,28 @@ void sig_term_handler(int s)
     exit(0);
 }
 
-
+void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
+void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
+void fin_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack);
 
 int main(int argc, char* argv[]){
     fd_set rset;
     signal(SIGQUIT, sig_quit_handler);
     signal(SIGTERM, sig_term_handler);
-    
+
     if (argc != 3) {
         cerr << "ERROR: Number of arguments incorrect. Try ./server <PORT> <FILE-DIR>\n";
         exit(EXIT_FAILURE);
     }
-    
+
     int port = atoi(argv[1]);
     char *save_directory = argv[2];
-    
+
     struct stat st = {0};
     if (stat(save_directory, &st) == -1) {
         mkdir(save_directory, 0700);
     }
-    
+
     if (port < 1024 || port > 65535) {
         cerr << "ERROR: Port numbers incorrect. Try another one.\n";
         exit(EXIT_FAILURE);
@@ -118,8 +127,13 @@ int main(int argc, char* argv[]){
   FD_ZERO(&readfds);
   FD_SET(udpSocket, &readfds);
 
+  // create client id: client stats mapping
+  map<int, client_stats> clients_map;
+
   while(1){
+  
     memset(buffer, '\0', sizeof(buffer));
+
     if (select(udpSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
       nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
 
@@ -128,15 +142,14 @@ int main(int argc, char* argv[]){
           output.close();
           close(udpSocket);
       }
-
-
       if (nBytes == 12){
-          break;
+          output.close();
+          close(udpSocket);
+//          break;
       }
 
-      // cout << buffer << endl;
-      Packet recv_pack(buffer);
 
+      Packet recv_pack(buffer);
       printf("server received %d bytes\n", nBytes);
       cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
       cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
@@ -146,21 +159,17 @@ int main(int argc, char* argv[]){
 
 
       if (Header::give_flag(recv_pack.header) == SYN){
-          char local_buffer[DATA_BUFFER_SIZE - 1];
-          memset(local_buffer, '\0', sizeof(local_buffer));
-          unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-          Packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
-          sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+
+          syn_handler(udpSocket,clientAddr,addr_size,recv_pack);
           continue;
       }
-
+      else if (Header::give_flag(recv_pack.header) == ACK || Header::give_flag(recv_pack.header) == 0 ){
+          normal_packet_handler(udpSocket,clientAddr,addr_size,recv_pack);
+          continue;
+       }
         // fin needs to change
-      if (Header::give_flag(recv_pack.header) == FIN){
-          char local_buffer[DATA_BUFFER_SIZE - 1];
-          memset(local_buffer, '\0', sizeof(local_buffer));
-          unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-          Packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
-          sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+      else if (Header::give_flag(recv_pack.header) == FIN){
+          fin_handler(udpSocket,clientAddr,addr_size,recv_pack);
           continue;
       }
       output.write(recv_pack.data, nBytes-12);
@@ -169,107 +178,25 @@ int main(int argc, char* argv[]){
 }
 
 
-//// Server program
-//#include <arpa/inet.h>
-//#include <cerrno>
-//#include <netinet/in.h>
-//#include <csignal>
-//#include <cstdio>
-//#include <cstdlib>
-//#include <cstring>
-//#include <sys/socket.h>
-//#include <sys/types.h>
-//#include <unistd.h>
-//#include <iostream>
-////using namespace std;
-//#define PORT 5000
-//#define MAXLINE 1024
-//int max(int x, int y)
-//{
-//    if (x > y)
-//        return x;
-//    else
-//        return y;
-//}
-//int main()
-//{
-//    int listenfd, connfd, udpfd, nready, maxfdp1;
-//    char buffer[MAXLINE];
-//    pid_t childpid;
-//    fd_set rset;
-//    ssize_t n;
-//    socklen_t len;
-//    const int on = 1;
-//    struct sockaddr_in cliaddr, servaddr;
-//    char* message = "Hello Client";
-//    void sig_chld(int);
-////    cout << message << "###" << endl;
-//
-//    /* create listening TCP socket */
-//    listenfd = socket(AF_INET, SOCK_STREAM, 0);
-//    bzero(&servaddr, sizeof(servaddr));
-//    servaddr.sin_family = AF_INET;
-//    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-//    servaddr.sin_port = htons(PORT);
-//
-//    // binding server addr structure to listenfd
-////    bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
-////    listen(listenfd, 10);
-//
-//    /* create UDP socket */
-//    udpfd = socket(AF_INET, SOCK_DGRAM, 0);
-//    // binding server addr structure to udp sockfd
-//    bind(udpfd, (struct sockaddr*)&servaddr, sizeof(servaddr));
-//
-//    // clear the descriptor set
-//    FD_ZERO(&rset);
-//
-//    // get maxfd
-//    maxfdp1 = max(listenfd, udpfd) + 1;
-//    for (;;) {
-//
-//        // set listenfd and udpfd in readset
-////        FD_SET(listenfd, &rset);
-//        FD_SET(udpfd, &rset);
-//
-////        cout << "!!!" << endl;
-//        // select the ready descriptor
-//        nready = select(maxfdp1, &rset, NULL, NULL, NULL);
-//        
-////        cout << "***" << endl;
-//
-//        // if tcp socket is readable then handle
-//        // it by accepting the connection
-////        cout << "@@@" << endl;
-//        if (FD_ISSET(listenfd, &rset)) {
-//            len = sizeof(cliaddr);
-//            connfd = accept(listenfd, (struct sockaddr*)&cliaddr, &len);
-//            if ((childpid = fork()) == 0) {
-//                close(listenfd);
-//                bzero(buffer, sizeof(buffer));
-////                printf("Message From TCP client: ");
-//                read(connfd, buffer, sizeof(buffer));
-//                puts(buffer);
-//                write(connfd, (const char*)message, sizeof(buffer));
-//                close(connfd);
-//                exit(0);
-//            }
-//            close(connfd);
-//        }
-//        // if udp socket is readable receive the message.
-//        if (FD_ISSET(udpfd, &rset)) {
-//            len = sizeof(cliaddr);
-//            bzero(buffer, sizeof(buffer));
-////            cout <<"\nMessage from UDP client: \n";
-//            printf("\nMessage from UDP client: ");
-//            n = recvfrom(udpfd, buffer, sizeof(buffer), 0,
-//                         (struct sockaddr*)&cliaddr, &len);
-////            cout << n << endl;
-//            printf("n=%d", n);
-//            std::cout << "n=" << n << std::endl;
-//            puts(buffer);
-//            sendto(udpfd, (const char*)message, sizeof(buffer), 0,
-//                   (struct sockaddr*)&cliaddr, sizeof(cliaddr));
-//        } 
-//    } 
-//} 
+
+void syn_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack){
+    char local_buffer[DATA_BUFFER_SIZE - 1];
+    memset(local_buffer, '\0', sizeof(local_buffer));
+    unsigned int ack_reply =  Header::give_seq(recv_pack.header) + 1;
+    Packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
+    sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+
+}
+
+void normal_packet_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack){
+
+
+}
+
+void fin_handler(int udpSocket,sockaddr_in clientAddr,socklen_t addr_size,Packet recv_pack){
+    char local_buffer[DATA_BUFFER_SIZE - 1];
+    memset(local_buffer, '\0', sizeof(local_buffer));
+    unsigned int ack_reply =  Header::give_seq(recv_pack.header) + 1;
+    Packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
+    sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
+}
