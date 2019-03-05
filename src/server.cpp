@@ -18,7 +18,7 @@
 #include <cstring>
 #include <deque>
 
-#include "packet.hpp"
+#include "Packet.hpp"
 
 using std::cout;
 using std::endl;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[]){
       }
 
       // cout << buffer << endl;
-      packet recv_pack(buffer);
+      Packet recv_pack(buffer);
 
       printf("server received %d bytes\n", nBytes);
       cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
@@ -145,21 +145,21 @@ int main(int argc, char* argv[]){
       cout << "recv_pack.data " << recv_pack.data << "\n" <<endl;
 
 
-      if (tcp_header::give_flag(recv_pack.header) == SYN){
+      if (Header::give_flag(recv_pack.header) == SYN){
           char local_buffer[DATA_BUFFER_SIZE - 1];
           memset(local_buffer, '\0', sizeof(local_buffer));
           unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-          packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
+          Packet pack(local_buffer, DATA_BUFFER_SIZE, 4321, ack_reply, 1, SYN_ACK);  // 1 need to change based on connection id;
           sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
           continue;
       }
 
         // fin needs to change
-      if (tcp_header::give_flag(recv_pack.header) == FIN){
+      if (Header::give_flag(recv_pack.header) == FIN){
           char local_buffer[DATA_BUFFER_SIZE - 1];
           memset(local_buffer, '\0', sizeof(local_buffer));
           unsigned int ack_reply =  ntohl(recv_pack.header.seq_num) + 1;
-          packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
+          Packet pack(local_buffer, DATA_BUFFER_SIZE, 4322, ack_reply, 1, FIN_ACK);  // 1 need to change based on connection id;
           sendto(udpSocket,pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&clientAddr,addr_size);
           continue;
       }

@@ -1,13 +1,13 @@
 #include <cstring>
 #include <iostream>
-#include "packet.hpp"
+#include "Packet.hpp"
 #include <cassert>
 using namespace std;
 // using char_array_ptr = std::unique_ptr<char[]>;
 //have to manual add \0 to ransfer string data, however, it does not work for binary data
-packet::packet() {}
+Packet::Packet() {}
 
-packet::packet(char *send_buffer, int buffer_size, unsigned int seq_num,
+Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
                unsigned int ack_num, unsigned short id, unsigned short flag) : header(seq_num, ack_num, id, flag)
 {
   // Encoder.
@@ -20,7 +20,7 @@ packet::packet(char *send_buffer, int buffer_size, unsigned int seq_num,
   // assert(total_data[TOTAL_PACKET_SIZE - 1] == '\0');
 }
 
-packet::packet(char *recv_buffer)
+Packet::Packet(char *recv_buffer)
 {
   // Decoder.
   char *ptr = recv_buffer;
@@ -32,15 +32,15 @@ packet::packet(char *recv_buffer)
   assert(data[DATA_SIZE] == '\0');
 }
 
-packet::~packet() {}
+Packet::~Packet() {}
 
-char *packet::memcopy_send(char *dest, void *src, size_t stride) {
+char *Packet::memcopy_send(char *dest, void *src, size_t stride) {
   memcpy(dest, src, stride);
   dest += stride;
   return dest;
 }
 
-char *packet::memcopy_recv(void *dest, char *src, size_t stride)
+char *Packet::memcopy_recv(void *dest, char *src, size_t stride)
 {
   memcpy(dest, src, stride);
   src += stride;

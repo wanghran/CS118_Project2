@@ -21,12 +21,26 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdint>
+#include <vector>
+#include <memory>
 
-#include "packet.hpp"
+#include "Packet.hpp"
 
 //http://developerweb.net/viewtopic.php?id=3196
 
-using namespace std;
+//using namespace std;
+
+using std::cout;
+using std::endl;
+using std::setfill;
+using std::setw;
+using std::hex;
+using std::cerr;
+using std::ifstream;
+using std::ios;
+using std::vector;
+using std::shared_ptr;
+
 #define SYN_ACK 6
 #define FIN_ACK 5
 #define ACK 4
@@ -42,74 +56,17 @@ using namespace std;
 
 struct addrinfo hints, *infoptr;
 
+void printInt_32(uint32_t x);
+void printInt_16(uint16_t x);
+void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size);
+void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size);
 
-void printInt_32(uint32_t x)
-{
-    cout << setfill('0') << setw(8) << hex << x << '\n';
-}
-
-void printInt_16(uint16_t x)
-{
-    cout << setfill('0') << setw(4) << hex << x << '\n';
-}
-
-
-void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size){
-
-    char SYN_buffer[DATA_BUFFER_SIZE - 1];
-    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
-    packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
-    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
-//    printInt_16(SYN_pack.header.flag);
-
-    while(1){
-        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
-        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
-        packet SYN_ACK_pack(SYN_ACK_buffer);
-        cout << "received byte " << nBytes_SYN_ACK << endl;
-        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
-        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
-        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
-        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
-        if (ntohs(SYN_ACK_pack.header.flag) == 6){
-             break;
-        }
-        else{
-            continue;
-        }
-
-    }
-
-}
-
-//needs to change
-void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size){
-
-    char SYN_buffer[DATA_BUFFER_SIZE - 1];
-    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
-    packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
-    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
-//    printInt_16(SYN_pack.header.flag);
-
-    while(1){
-        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
-        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
-        packet SYN_ACK_pack(SYN_ACK_buffer);
-        cout << "received byte " << nBytes_SYN_ACK << endl;
-        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
-        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
-        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
-        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
-        if (ntohs(SYN_ACK_pack.header.flag) == 6){
-             break;
-        }
-        else{
-            continue;
-        }
-
-    }
-
-}
+class ClientData {
+public:
+    vector<shared_ptr<Packet>> packets;
+    int left = 0;
+    int right = 0;
+};
 
 
 
@@ -192,7 +149,7 @@ int main(int argc, char* argv[]){
     memset(buffer, '\0', sizeof(buffer));
     int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
     cout << "byte send: " << bytes_send << endl;
-    packet pack(buffer, DATA_BUFFER_SIZE, 12345, 4321, 1, 4);
+    Packet pack(buffer, DATA_BUFFER_SIZE, 12345, 4321, 1, 4);
 
 
     if (sendto(clientSocket,pack.total_data,bytes_send+12,0,(struct sockaddr *)&serverAddr,addr_size) < 0) {
@@ -225,74 +182,77 @@ int main(int argc, char* argv[]){
 
 
 
+void printInt_32(uint32_t x)
+{
+    cout << setfill('0') << setw(8) << hex << x << '\n';
+}
 
-// UDP client program
-//#include <sys/types.h>
-//#include <sys/socket.h>
-//#include <sys/stat.h>
-//#include <netinet/in.h>
-//#include <arpa/inet.h>
-//#include <string.h>
-//#include <stdio.h>
-//#include <errno.h>
-//#include <unistd.h>
-//#include <signal.h>
-//#include <fcntl.h>
-//#include <iostream>
-//#include <sstream>
-//#include <fstream>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <sys/types.h>
-//#include <sys/socket.h>
-//#include <netdb.h>
-//#include <arpa/inet.h>
-//#include <iostream>
-//#include <iomanip>
-//#include <cstdint>
-//
-//#define PORT 5000
-//#define MAXLINE 1024
-//
-//using namespace std;
-//
-//
-//int main()
-//{
-//    int sockfd;
-//    char buffer[MAXLINE];
-//    char* message = "Hello Server";
-//    struct sockaddr_in servaddr;
-//    
-//    int n;
-//    socklen_t len;
-//    // Creating socket file descriptor
-//    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-//        printf("socket creation failed");
-//        exit(0);
-//    }
-//    
-//    memset(&servaddr, 0, sizeof(servaddr));
-//    
-//    // Filling server information
-//    servaddr.sin_family = AF_INET;
-//    servaddr.sin_port = htons(PORT);
-//    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-//    // send hello message to server
-//    sendto(sockfd, (const char*)message, strlen(message),
-//           0, (const struct sockaddr*)&servaddr,
-//           sizeof(servaddr));
-//    
-//    // receive server's response
-//    printf("Message from server: ");
-//    n = recvfrom(sockfd, buffer, MAXLINE,
-//                 0, (struct sockaddr*)&servaddr,
-//                 &len);
-//    
-//    
-//    puts(buffer);
-//    close(sockfd);
-//    return 0;
-//} 
+void printInt_16(uint16_t x)
+{
+    cout << setfill('0') << setw(4) << hex << x << '\n';
+}
+
+
+void syn(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
+    
+    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
+    Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
+    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+    //    printInt_16(SYN_pack.header.flag);
+    
+    while(1){
+        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
+        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        Packet SYN_ACK_pack(SYN_ACK_buffer);
+        cout << "received byte " << nBytes_SYN_ACK << endl;
+        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
+        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
+        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
+        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
+        if (ntohs(SYN_ACK_pack.header.flag) == 6){
+            break;
+        }
+        else{
+            continue;
+        }
+        
+    }
+    
+}
+
+//needs to change
+void fin(int clientSocket, sockaddr_in serverAddr, socklen_t addr_size) {
+    
+    char SYN_buffer[DATA_BUFFER_SIZE - 1];
+    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
+    Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
+    sendto(clientSocket,SYN_pack.total_data,TOTAL_BUFFER_SIZE,0,(struct sockaddr *)&serverAddr,addr_size);
+    //    printInt_16(SYN_pack.header.flag);
+    
+    while(1){
+        char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
+        int nBytes_SYN_ACK = recvfrom(clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&serverAddr,&addr_size);
+        Packet SYN_ACK_pack(SYN_ACK_buffer);
+        cout << "received byte " << nBytes_SYN_ACK << endl;
+        cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
+        cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
+        cout << "recv_pack.header.ID " << ntohs(SYN_ACK_pack.header.ID) << endl;
+        cout << "recv_pack.header.flag " << ntohs(SYN_ACK_pack.header.flag) << endl;
+        if (ntohs(SYN_ACK_pack.header.flag) == 6){
+            break;
+        }
+        else{
+            continue;
+        }
+        
+    }
+    
+}
+
+
+
+
+
 
 
