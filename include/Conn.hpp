@@ -7,9 +7,10 @@
 
 class Conn {
 public:
-    int clientSocket;
+    int socket;
     sockaddr_in addr;
     socklen_t addr_size;
+    fd_set read_fds;
 };
 
 #endif

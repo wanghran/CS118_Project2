@@ -1,10 +1,16 @@
+#include "Packet.hpp"
+
 #include <cstring>
 #include <iostream>
-#include "Packet.hpp"
 #include <cassert>
-using namespace std;
-// using char_array_ptr = std::unique_ptr<char[]>;
-//have to manual add \0 to ransfer string data, however, it does not work for binary data
+#include <unistd.h>
+#include <errno.h>
+
+using std::cout;
+using std::endl;
+
+#define TOTAL_BUFFER_SIZE 524
+
 Packet::Packet() {}
 
 Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
@@ -13,6 +19,7 @@ Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
     // Encoder.
     char *ptr = total_data;
     data_bytes = buffer_size;
+    total_bytes = data_bytes + HEADER_SIZE;
     ptr = memcopy_send(ptr, (void *)&header.seq_num, sizeof(header.seq_num));
     ptr = memcopy_send(ptr, (void *)&header.ack_num, sizeof(header.ack_num));
     ptr = memcopy_send(ptr, (void *)&header.ID, sizeof(header.ID));
@@ -25,29 +32,38 @@ Packet::Packet(char *recv_buffer, int bytes_recved)
 {
     // Decoder.
     char *ptr = recv_buffer;
+    total_bytes = bytes_recved;
+    data_bytes = bytes_recved - HEADER_SIZE;
     ptr = memcopy_recv((void *)&header.seq_num, ptr, sizeof(header.seq_num));
     ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));
     ptr = memcopy_recv((void *)&header.ID, ptr, sizeof(header.ID));
     ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
-    int num_data_bytes = bytes_recved - HEADER_SIZE;
-    ptr = memcopy_recv(data, ptr, num_data_bytes);
-    assert(data[num_data_bytes] == '\0');
+    ptr = memcopy_recv(data, ptr, data_bytes);
+    assert(data[data_bytes] == '\0');
 }
 
 Packet::~Packet() {}
 
 void Packet::send_packet(const Conn &conn) {
-    if (state != INIT) {
-        return; // do not send it again if it is already sent but not acked yet unless timeout
-    }
-    if (sendto(conn.clientSocket, total_data,
+    if (sendto(conn.socket, total_data,
                data_bytes + HEADER_SIZE, 0,
                (struct sockaddr *)&conn.addr, conn.addr_size) < 0) {
         perror("send to");
         exit(EXIT_FAILURE);
     } else {
         state = SENT;
+        send_time = high_resolution_clock::now();
     }
+}
+
+void Packet::print_packet() const {
+    cout << "----------\n";
+    cout << "recv_pack.header.seq_num " << ntohl(header.seq_num) << endl;
+    cout << "recv_pack.header.ack_num " << ntohl(header.ack_num) << endl;
+    cout << "recv_pack.header.ID " << ntohs(header.ID) << endl;
+    cout << "recv_pack.header.flag " << ntohs(header.flag) << endl;
+    cout << "recv_pack.data " << data << endl;
+    cout << "----------\n\n";
 }
 
 char *Packet::memcopy_send(char *dest, void *src, size_t stride) {
@@ -61,4 +77,25 @@ char *Packet::memcopy_recv(void *dest, char *src, size_t stride)
     memcpy(dest, src, stride);
     src += stride;
     return src;
+}
+
+shared_ptr<Packet> recv_packet(Conn &conn) {
+    char buffer[TOTAL_BUFFER_SIZE];
+    //    FD_ZERO(&conn.read_fds);
+    memset(buffer, '\0', sizeof(buffer));
+//    cout << "xxx" << endl;
+    struct timeval timeout;
+    timeout.tv_sec = 1; // TODO: fix server
+    timeout.tv_usec = 0;
+    if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
+//        cout << "yyy" << endl;
+        int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
+                                  (struct sockaddr *)&conn.addr, &conn.addr_size));
+//        printf("%s\n", strerror(errno));
+        cout << "n_bytes " << n_bytes << endl;
+        return shared_ptr<Packet>(new Packet(buffer, n_bytes));
+    } else {
+//        cout << "zzz" << endl;
+        return nullptr;
+    }
 }
