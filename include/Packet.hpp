@@ -36,6 +36,7 @@ public:
     Packet(char *recv_buffer, int bytes_recved);
     void send_packet(const Conn &conn);
     void print_packet() const;
+    bool is_timeout() const;
     ~Packet();
     
 private:

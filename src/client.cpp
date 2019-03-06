@@ -192,7 +192,10 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
             cnt += 1;
         }
     }
-    cout << "Sent " << cnt << " packets" << endl;
+    if (cnt > 0) {
+        cout << "Sent " << cnt << " packets" << endl;
+    }
+    
 }
 
 
@@ -215,32 +218,36 @@ void recv_acks(ClientData &client_data, Conn &conn) {
 void timeout_resend(ClientData &client_data, const Conn &conn) {
     int cnt = 0;
     for (auto const& packet_ptr : client_data.packets) {
-        if (packet_ptr->state == SENT) {
-            timestamp current_time = high_resolution_clock::now();
-            double duration = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - packet_ptr->send_time).count();
-            if (duration >= 500) {
-                packet_ptr->send_packet(conn);
-                cnt += 1;
-            }
+        if (packet_ptr->is_timeout()) {
+            packet_ptr->send_packet(conn); // resend
+            cnt += 1;
         }
     }
-    cout << "Resent " << cnt << " packets" << endl;
+    if (cnt > 0) {
+        cout << "Resent " << cnt << " packets" << endl;
+    }
 }
 
 
 shared_ptr<Packet> syn(Conn &conn) {
+    char SYN_buffer[1];
+    memset(SYN_buffer, '\0', sizeof(SYN_buffer));
+    Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     while (true) {
-        char SYN_buffer[1];
-        memset(SYN_buffer, '\0', sizeof(SYN_buffer));
-        Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
-        SYN_pack.send_packet(conn);
+        if (SYN_pack.state == INIT) {
+            cout << "Syn: Init sending" << endl;
+            SYN_pack.send_packet(conn);
+        }
+        if (SYN_pack.is_timeout()) {
+            cout << "Syn: Resending" << endl;
+            SYN_pack.send_packet(conn);
+        }
         shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
         if (recv_pack_ptr) {
             recv_pack_ptr->print_packet();
             assert (ntohs(recv_pack_ptr->header.flag) == 6);
             return recv_pack_ptr;
         } else {
-            cout << "Syn: Keep sending" << endl;
             continue; // keep sending the syn packet until receiving ack
         }
     }

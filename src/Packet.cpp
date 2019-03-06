@@ -79,23 +79,37 @@ char *Packet::memcopy_recv(void *dest, char *src, size_t stride)
     return src;
 }
 
+bool Packet::is_timeout() const {
+    if (state == SENT) {
+        timestamp current_time = high_resolution_clock::now();
+        double duration = std::chrono::duration_cast
+        <std::chrono::milliseconds>(current_time - send_time).count();
+//        cout << duration << endl;
+        return duration >= 500; // 0.5 sec
+    }
+    return false;
+}
+
 shared_ptr<Packet> recv_packet(Conn &conn) {
     char buffer[TOTAL_BUFFER_SIZE];
     //    FD_ZERO(&conn.read_fds);
     memset(buffer, '\0', sizeof(buffer));
-//    cout << "xxx" << endl;
+    //    cout << "xxx" << endl;
     struct timeval timeout;
-    timeout.tv_sec = 1; // TODO: fix server
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0; // TODO: fix server
+    timeout.tv_usec = 5000; // 0.5 sec TODO: check!!!!!!!
     if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
-//        cout << "yyy" << endl;
+        //        cout << "yyy" << endl;
         int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
-                                  (struct sockaddr *)&conn.addr, &conn.addr_size));
-//        printf("%s\n", strerror(errno));
+                                   (struct sockaddr *)&conn.addr, &conn.addr_size));
+        //        printf("%s\n", strerror(errno));
         cout << "n_bytes " << n_bytes << endl;
         return shared_ptr<Packet>(new Packet(buffer, n_bytes));
     } else {
-//        cout << "zzz" << endl;
+        //        cout << "zzz" << endl;
         return nullptr;
     }
 }
+
+
+
