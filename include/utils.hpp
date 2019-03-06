@@ -12,8 +12,8 @@ int server_convert_to_packet_id(int byte_num) {
                DATA_BUFFER_SIZE);
 }
 
-int client_convert_to_packet_id(int byte_num, int recv_butes) {
-    return server_convert_to_packet_id(byte_num - recv_butes);
+int client_convert_to_packet_id(int byte_num, int recv_bytes) {
+    return server_convert_to_packet_id(byte_num - recv_bytes);
 }
 
 int client_get_next_seq_num(int seq_num) {

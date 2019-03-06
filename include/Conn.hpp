@@ -8,7 +8,7 @@
 class Conn {
 public:
     int clientSocket;
-    sockaddr_in serverAddr;
+    sockaddr_in addr;
     socklen_t addr_size;
 };
 

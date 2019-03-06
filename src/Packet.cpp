@@ -42,7 +42,7 @@ void Packet::send_packet(const Conn &conn) {
     }
     if (sendto(conn.clientSocket, total_data,
                data_bytes + HEADER_SIZE, 0,
-               (struct sockaddr *)&conn.serverAddr, conn.addr_size) < 0) {
+               (struct sockaddr *)&conn.addr, conn.addr_size) < 0) {
         perror("send to");
         exit(EXIT_FAILURE);
     } else {

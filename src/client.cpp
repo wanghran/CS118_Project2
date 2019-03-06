@@ -21,9 +21,11 @@
 #include <cstdint>
 #include <vector>
 #include <memory>
+#include <cassert>
 
 #include "Packet.hpp"
 #include "Conn.hpp"
+#include "utils.hpp"
 //using namespace std;
 
 using std::cout;
@@ -165,13 +167,13 @@ void init_connection(int argc, char* argv[], int &port, Conn &conn,
     }
     
     /*Configure settings in address struct*/
-    conn.serverAddr.sin_family = AF_INET;
-    conn.serverAddr.sin_port = htons(port);
-    conn.serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    memset(conn.serverAddr.sin_zero, '\0', sizeof conn.serverAddr.sin_zero);
+    conn.addr.sin_family = AF_INET;
+    conn.addr.sin_port = htons(port);
+    conn.addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(conn.addr.sin_zero, '\0', sizeof conn.addr.sin_zero);
     
     /*Initialize size variable to be used later on*/
-    conn.addr_size = sizeof conn.serverAddr;
+    conn.addr_size = sizeof conn.addr;
 }
 
 
@@ -218,48 +220,31 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 }
 
 
-//void recv_acks(Conn &conn) {
-//    char buffer[TOTAL_BUFFER_SIZE];
-//    fd_set readfds;
-//    FD_ZERO(&readfds);
-//    FD_SET(conn.clientSocket, &readfds);
-//    while(true) {
-//        memset(buffer, '\0', sizeof(buffer));
-//        if (select(conn.clientSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
-//            nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
-//            
-//            
-//            
-//            Packet recv_pack(buffer);
-//            printf("server received %d bytes\n", nBytes);
-//            cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
-//            cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
-//            cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
-//            cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
-//            cout << "recv_pack.data " << recv_pack.data << "\n" <<endl;
-//            
-//            
-//            if (Header::give_flag(recv_pack.header) == SYN){
-//                syn_handler(udpSocket,clientAddr,addr_size,recv_pack,save_directory);
-//                continue;
-//            }
-//            else if (Header::give_flag(recv_pack.header) == ACK || Header::give_flag(recv_pack.header) == NO_FLAG ){
-//                normal_packet_handler(udpSocket,clientAddr,addr_size,recv_pack,nBytes);
-//                continue;
-//            }
-//            // fin needs to change
-//            else if (Header::give_flag(recv_pack.header) == FIN){
-//                fin_handler(udpSocket,clientAddr,addr_size,recv_pack);
-//                continue;
-//            }
-//        }
-//    }
-//
-//    
-//    
-//    
-//    
-//}
+void recv_acks(ClientData &client_data, Conn &conn) {
+    char buffer[TOTAL_BUFFER_SIZE];
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(conn.clientSocket, &readfds);
+    while(true) {
+        memset(buffer, '\0', sizeof(buffer));
+        if (select(conn.clientSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
+            int nBytes = int(recvfrom(conn.clientSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&conn.addr, &conn.addr_size));
+            Packet recv_pack(buffer, nBytes);
+            printf("server received %d bytes\n", nBytes);
+            cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
+            cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
+            cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
+            cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
+            cout << "recv_pack.data " << recv_pack.data << "\n" << endl;
+            int packet_id = client_convert_to_packet_id(ntohl(recv_pack.header.seq_num), nBytes);
+            assert (packet_id >= 0 and packet_id < client_data.packets.size());
+            client_data.packets[packet_id]->state = ACKED;
+            // TODO: modify L and R pointers
+        } else {
+            break;
+        }
+    }
+}
 
 
 Packet syn(Conn &conn) {
@@ -267,14 +252,10 @@ Packet syn(Conn &conn) {
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     SYN_pack.send_packet(conn);
-//    sendto(conn.clientSocket, SYN_pack.total_data, TOTAL_BUFFER_SIZE, 0,
-//           (struct sockaddr *)&conn.serverAddr, conn.addr_size);
-    //    printInt_16(SYN_pack.header.flag);
-    
     while(1){
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
         cout << "Waiting to receive from server..." << endl;
-        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
+        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.addr,&conn.addr_size);
         Packet SYN_ACK_pack(SYN_ACK_buffer, nBytes_SYN_ACK);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
@@ -298,13 +279,9 @@ void fin(Conn &conn) {
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     SYN_pack.send_packet(conn);
-//    sendto(conn.clientSocket, SYN_pack.total_data, TOTAL_BUFFER_SIZE, 0,
-//           (struct sockaddr *)&conn.serverAddr, conn.addr_size);
-    //    printInt_16(SYN_pack.header.flag);
-    
     while(1){
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
-        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
+        int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.addr,&conn.addr_size);
         Packet SYN_ACK_pack(SYN_ACK_buffer, nBytes_SYN_ACK);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
