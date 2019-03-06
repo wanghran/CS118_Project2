@@ -31,6 +31,7 @@ Packet::Packet(char *recv_buffer, int bytes_recved)
     ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
     int num_data_bytes = bytes_recved - HEADER_SIZE;
     ptr = memcopy_recv(data, ptr, num_data_bytes);
+    data_bytes = num_data_bytes;
     assert(data[num_data_bytes] == '\0');
 }
 

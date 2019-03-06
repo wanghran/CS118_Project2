@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
             nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
 
             shared_ptr<Packet> recv_pack(new Packet(buffer, nBytes));
+            
             printf("server received %d bytes\n", nBytes);
             cout << "recv_pack.header.seq_num " << ntohl(recv_pack->header.seq_num) << endl;
             cout << "recv_pack.header.ack_num " << ntohl(recv_pack->header.ack_num) << endl;
@@ -169,8 +170,8 @@ int main(int argc, char *argv[])
             fstream output(stats.client_file, std::ios::out | std::ios::binary);
             for (shared_ptr<Packet> packet_ptr : stats.packet_ptr_buffer)
             {
-                cout << sizeof(packet_ptr->data) << endl;
-                output.write(packet_ptr->data, sizeof(packet_ptr->data));
+                cout << "data byte " << packet_ptr->data_bytes << endl;
+                output.write(packet_ptr->data, packet_ptr->data_bytes);
             }
             output.close();
             break;
