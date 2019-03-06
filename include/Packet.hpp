@@ -23,7 +23,7 @@ public:
     State state = INIT;
     Packet();
     Packet(char *send_buffer, int buffer_size, unsigned int seq_num, unsigned int ack_num, unsigned short id, unsigned short flag);
-    Packet(char *recv_buffer);
+    Packet(char *recv_buffer, int bytes_recved);
     void send_packet(const Conn &conn);
     ~Packet();
     

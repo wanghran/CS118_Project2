@@ -21,7 +21,7 @@ Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
     // assert(total_data[TOTAL_PACKET_SIZE - 1] == '\0');
 }
 
-Packet::Packet(char *recv_buffer)
+Packet::Packet(char *recv_buffer, int bytes_recved)
 {
     // Decoder.
     char *ptr = recv_buffer;
@@ -29,13 +29,17 @@ Packet::Packet(char *recv_buffer)
     ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));
     ptr = memcopy_recv((void *)&header.ID, ptr, sizeof(header.ID));
     ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
-    ptr = memcopy_recv(data, ptr, DATA_SIZE);
-    assert(data[DATA_SIZE] == '\0');
+    int num_data_bytes = bytes_recved - HEADER_SIZE;
+    ptr = memcopy_recv(data, ptr, num_data_bytes);
+    assert(data[num_data_bytes] == '\0');
 }
 
 Packet::~Packet() {}
 
 void Packet::send_packet(const Conn &conn) {
+    if (state != INIT) {
+        return; // do not send it again if it is already sent but not acked yet unless timeout
+    }
     if (sendto(conn.clientSocket, total_data,
                data_bytes + HEADER_SIZE, 0,
                (struct sockaddr *)&conn.serverAddr, conn.addr_size) < 0) {

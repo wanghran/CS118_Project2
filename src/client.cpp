@@ -67,7 +67,7 @@ void init_connection(int argc, char* argv[], int &port, Conn &conn,
                      string &file_name);
 Packet syn(Conn &conn);
 void fin(Conn &conn);
-ClientData gen_client_data(const string &file_name, Packet syn_ack);
+ClientData gen_client_data(const string &file_name, Packet &syn_ack);
 bool done(const ClientData &client_data);
 void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn);
 void printInt_32(uint32_t x);
@@ -85,7 +85,7 @@ int main(int argc, char* argv[]){
     Packet syn_ack = syn(conn);
     
     
-    ClientData client_data = gen_client_data(file_name,syn_ack);
+    ClientData client_data = gen_client_data(file_name, syn_ack);
     
     while(!done(client_data)) {
         
@@ -175,7 +175,7 @@ void init_connection(int argc, char* argv[], int &port, Conn &conn,
 }
 
 
-ClientData gen_client_data(const string &file_name, Packet syn_ack) {
+ClientData gen_client_data(const string &file_name, Packet &syn_ack) {
     char buffer[READ_DATA_BUFFER_SIZE]; //the 512th byte in the buffer is set to be \0, only read 511
     ifstream input(file_name, ios::binary);
     if(!input.is_open()){
@@ -218,9 +218,52 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 }
 
 
+//void recv_acks(Conn &conn) {
+//    char buffer[TOTAL_BUFFER_SIZE];
+//    fd_set readfds;
+//    FD_ZERO(&readfds);
+//    FD_SET(conn.clientSocket, &readfds);
+//    while(true) {
+//        memset(buffer, '\0', sizeof(buffer));
+//        if (select(conn.clientSocket + 1, &readfds, NULL, NULL, NULL) > 0) {
+//            nBytes = recvfrom(udpSocket, buffer, sizeof(buffer), 0, (struct sockaddr *)&clientAddr, &addr_size);
+//            
+//            
+//            
+//            Packet recv_pack(buffer);
+//            printf("server received %d bytes\n", nBytes);
+//            cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
+//            cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
+//            cout << "recv_pack.header.ID " << ntohs(recv_pack.header.ID) << endl;
+//            cout << "recv_pack.header.flag " << ntohs(recv_pack.header.flag) << endl;
+//            cout << "recv_pack.data " << recv_pack.data << "\n" <<endl;
+//            
+//            
+//            if (Header::give_flag(recv_pack.header) == SYN){
+//                syn_handler(udpSocket,clientAddr,addr_size,recv_pack,save_directory);
+//                continue;
+//            }
+//            else if (Header::give_flag(recv_pack.header) == ACK || Header::give_flag(recv_pack.header) == NO_FLAG ){
+//                normal_packet_handler(udpSocket,clientAddr,addr_size,recv_pack,nBytes);
+//                continue;
+//            }
+//            // fin needs to change
+//            else if (Header::give_flag(recv_pack.header) == FIN){
+//                fin_handler(udpSocket,clientAddr,addr_size,recv_pack);
+//                continue;
+//            }
+//        }
+//    }
+//
+//    
+//    
+//    
+//    
+//}
+
+
 Packet syn(Conn &conn) {
-    
-    char SYN_buffer[READ_DATA_BUFFER_SIZE];
+    char SYN_buffer[1];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     SYN_pack.send_packet(conn);
@@ -232,7 +275,7 @@ Packet syn(Conn &conn) {
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
         cout << "Waiting to receive from server..." << endl;
         int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
-        Packet SYN_ACK_pack(SYN_ACK_buffer);
+        Packet SYN_ACK_pack(SYN_ACK_buffer, nBytes_SYN_ACK);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
         cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;
@@ -251,8 +294,7 @@ Packet syn(Conn &conn) {
 
 //needs to change
 void fin(Conn &conn) {
-    
-    char SYN_buffer[READ_DATA_BUFFER_SIZE];
+    char SYN_buffer[1];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     SYN_pack.send_packet(conn);
@@ -263,7 +305,7 @@ void fin(Conn &conn) {
     while(1){
         char SYN_ACK_buffer[TOTAL_BUFFER_SIZE];
         int nBytes_SYN_ACK = recvfrom(conn.clientSocket,SYN_ACK_buffer,sizeof(SYN_ACK_buffer),0,(struct sockaddr *)&conn.serverAddr,&conn.addr_size);
-        Packet SYN_ACK_pack(SYN_ACK_buffer);
+        Packet SYN_ACK_pack(SYN_ACK_buffer, nBytes_SYN_ACK);
         cout << "received byte " << nBytes_SYN_ACK << endl;
         cout << "recv_pack.header.seq_num " << ntohl(SYN_ACK_pack.header.seq_num) << endl;
         cout << "recv_pack.header.ack_num " << ntohl(SYN_ACK_pack.header.ack_num) << endl;

@@ -140,7 +140,7 @@ int main(int argc, char* argv[]){
 
 
 
-      Packet recv_pack(buffer);
+      Packet recv_pack(buffer, nBytes);
       printf("server received %d bytes\n", nBytes);
       cout << "recv_pack.header.seq_num " << ntohl(recv_pack.header.seq_num) << endl;
       cout << "recv_pack.header.ack_num " << ntohl(recv_pack.header.ack_num) << endl;
