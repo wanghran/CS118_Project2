@@ -190,7 +190,7 @@ ClientData gen_client_data(const string &file_name, Packet &syn_ack) {
             break;
         }
         cout << "Packet contains " << bytes_send << " bytes of data" << endl;
-        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, Header::give_id(syn_ack.header), 4))); // TODO: properly set the nums
+        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12346, 4321, Header::give_id(syn_ack.header), 4))); // TODO: properly set the nums
     }
     input.close();
     cout << "Created " << rtn.packets.size() << " packets" << endl;
