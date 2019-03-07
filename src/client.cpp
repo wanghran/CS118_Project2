@@ -47,8 +47,6 @@ using std::string;
 #define FIN 1
 
 #define READ_DATA_BUFFER_SIZE 511
-//#define DATA_BUFFER_SIZE 512
-//#define TOTAL_BUFFER_SIZE 524
 #define CWND 512
 #define SS_THRESH 10000
 #define MAX_ACK_SEQ 102400
@@ -169,6 +167,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         exit(EXIT_FAILURE);
     }
     ClientData rtn;
+    int start_seq = CLIENT_DATA_START_SEQ_NUM;
     while(1) {
         memset(buffer, '\0', sizeof(buffer));
         int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
@@ -176,7 +175,8 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
             break;
         }
         cout << "Packet contains " << bytes_send << " bytes of data" << endl;
-        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, Header::give_id(syn_ack->header), 4))); // TODO: properly set the nums
+        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, start_seq, 4321, Header::give_id(syn_ack->header), 4))); // TODO: properly set the nums
+        start_seq += bytes_send;
     }
     input.close();
     cout << "Created " << rtn.packets.size() << " packets" << endl;

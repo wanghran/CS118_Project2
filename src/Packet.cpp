@@ -38,8 +38,10 @@ Packet::Packet(char *recv_buffer, int bytes_recved)
     ptr = memcopy_recv((void *)&header.ack_num, ptr, sizeof(header.ack_num));
     ptr = memcopy_recv((void *)&header.ID, ptr, sizeof(header.ID));
     ptr = memcopy_recv((void *)&header.flag, ptr, sizeof(header.flag));
-    ptr = memcopy_recv(data, ptr, data_bytes);
-    assert(data[data_bytes] == '\0');
+    int num_data_bytes = bytes_recved - HEADER_SIZE;
+    ptr = memcopy_recv(data, ptr, num_data_bytes);
+    data_bytes = num_data_bytes;
+    assert(data[num_data_bytes] == '\0');
 }
 
 Packet::~Packet() {}
