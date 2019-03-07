@@ -47,8 +47,6 @@ using std::string;
 #define FIN 1
 
 #define READ_DATA_BUFFER_SIZE 511
-//#define DATA_BUFFER_SIZE 512
-//#define TOTAL_BUFFER_SIZE 524
 #define CWND 512
 #define SS_THRESH 10000
 #define MAX_ACK_SEQ 102400
@@ -68,7 +66,7 @@ public:
 void init_connection(int argc, char* argv[], int &port, Conn &conn,
                      string &file_name);
 shared_ptr<Packet> syn(Conn &conn);
-void fin(Conn &conn);
+void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack);
 ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack);
 bool done(const ClientData &client_data);
 void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn);
@@ -99,6 +97,8 @@ int main(int argc, char* argv[]){
         
         timeout_resend(client_data, conn);
     }
+    
+    fin(client_data, conn, syn_ack);
     close(conn.socket);
     return 0;
 }
@@ -169,6 +169,8 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         exit(EXIT_FAILURE);
     }
     ClientData rtn;
+    int start_seq = CLIENT_DATA_START_SEQ_NUM;
+    int cnt = 0;
     while(1) {
         memset(buffer, '\0', sizeof(buffer));
         int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
@@ -176,7 +178,17 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
             break;
         }
         cout << "Packet contains " << bytes_send << " bytes of data" << endl;
-        rtn.packets.push_back(shared_ptr<Packet>(new Packet(buffer, bytes_send, 12345, 4321, Header::give_id(syn_ack->header), 4))); // TODO: properly set the nums
+        int flag = 0;
+        int ack_num = 0;
+        if (cnt == 0) {
+            flag = ACK;
+            ack_num = SERVER_DATA_START_SEQ_NUM;
+        }
+        shared_ptr<Packet> new_pack(new Packet(buffer, bytes_send, start_seq, ack_num, Header::give_id(syn_ack->header), flag));
+        new_pack->print_packet();
+        rtn.packets.push_back(new_pack); // TODO: properly set the nums
+        start_seq += (bytes_send + 1);
+        ++cnt;
     }
     input.close();
     cout << "Created " << rtn.packets.size() << " packets" << endl;
@@ -205,10 +217,14 @@ void recv_acks(ClientData &client_data, Conn &conn) {
         if (recv_pack_ptr) {
             int n_bytes = recv_pack_ptr->total_bytes;
             recv_pack_ptr->print_packet();
-            int packet_id = client_convert_to_packet_id(ntohl(recv_pack_ptr->header.seq_num), n_bytes);
+            int packet_id = client_convert_to_packet_id(ntohl(recv_pack_ptr->header.ack_num), n_bytes);
             assert (packet_id >= 0 and packet_id < client_data.packets.size());
+            cout << "Packet " << packet_id << " acked" << endl;
             client_data.packets[packet_id]->state = ACKED;
             // TODO: modify L and R pointers
+            if (done(client_data)) {
+                return;
+            }
         } else {
             break;
         }
@@ -253,30 +269,52 @@ shared_ptr<Packet> syn(Conn &conn) {
     }
 }
 
-void fin(Conn &conn) {
+void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
     while (true) {
         char FIN_buffer[1];
         memset(FIN_buffer, '\0', sizeof(FIN_buffer));
-        Packet FIN_pack(FIN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, FIN); // TODO: check and fix
-        FIN_pack.send_packet(conn);
-        shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
-        if (recv_pack_ptr) {
-            recv_pack_ptr->print_packet();
-            assert (ntohs(recv_pack_ptr->header.flag) == 6);
-            return;
-        } else {
-            continue; // keep sending the syn packet until receiving ack
+        assert (!client_data.packets.empty());
+        int seq_num = Header::give_seq(client_data.packets.back()->header) + 1 + client_data.packets.back()->data_bytes;
+        cout << "@@@ seq_num " << seq_num << endl;
+        client_data.packets.back()->print_packet();
+        Packet FIN_pack1(FIN_buffer, DATA_BUFFER_SIZE, seq_num, 0, Header::give_id(syn_ack->header), FIN);
+        cout << "Fin: pack 1" << endl;
+        FIN_pack1.print_packet();
+        FIN_pack1.send_packet(conn);
+        while (true) {
+            shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
+            cout << "recv or not" << endl;
+            if (recv_pack_ptr) {
+                cout << ":)" << endl;
+                cout << "Fin: pack 1 acked" << endl;
+                recv_pack_ptr->print_packet();
+//                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
+                Packet FIN_pack2(FIN_buffer, DATA_BUFFER_SIZE, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
+                cout << "Fin: pack 2" << endl;
+                FIN_pack2.print_packet();
+                FIN_pack2.send_packet(conn);
+                return;
+            } else {
+                cout << ":(" << endl;
+//                exit(-1);
+                continue; // keep sending the syn packet until receiving ack
+            }
         }
+
     }
 }
 
 
 bool done(const ClientData &client_data) {
+    int cnt = 0;
     for (auto const& packet_ptr : client_data.packets) {
         if (packet_ptr->state != ACKED) {
+            cout << "Packet " << cnt << " not acked yet --> not done" << endl;
             return false;
         }
+        ++cnt;
     }
+    cout << "All packets acked --> done" << endl;
     return true;
 }
 

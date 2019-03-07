@@ -46,7 +46,7 @@ Packet::~Packet() {}
 
 void Packet::send_packet(const Conn &conn) {
     if (sendto(conn.socket, total_data,
-               data_bytes + HEADER_SIZE, 0,
+               data_bytes + HEADER_SIZE + 1, 0,
                (struct sockaddr *)&conn.addr, conn.addr_size) < 0) {
         perror("send to");
         exit(EXIT_FAILURE);
@@ -58,11 +58,11 @@ void Packet::send_packet(const Conn &conn) {
 
 void Packet::print_packet() const {
     cout << "----------\n";
-    cout << "recv_pack.header.seq_num " << ntohl(header.seq_num) << endl;
-    cout << "recv_pack.header.ack_num " << ntohl(header.ack_num) << endl;
-    cout << "recv_pack.header.ID " << ntohs(header.ID) << endl;
-    cout << "recv_pack.header.flag " << ntohs(header.flag) << endl;
-    cout << "recv_pack.data " << data << endl;
+    cout << "header.seq_num " << ntohl(header.seq_num) << endl;
+    cout << "header.ack_num " << ntohl(header.ack_num) << endl;
+    cout << "header.ID " << ntohs(header.ID) << endl;
+    cout << "header.flag " << ntohs(header.flag) << endl;
+    cout << "data " << data << endl;
     cout << "----------\n\n";
 }
 
@@ -97,7 +97,7 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     //    cout << "xxx" << endl;
     struct timeval timeout;
     timeout.tv_sec = 0; // TODO: fix server
-    timeout.tv_usec = 5000; // 0.5 sec TODO: check!!!!!!!
+    timeout.tv_usec = 50000000; // 0.5 sec TODO: check!!!!!!!
     if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
         //        cout << "yyy" << endl;
         int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
@@ -107,6 +107,7 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
         return shared_ptr<Packet>(new Packet(buffer, n_bytes));
     } else {
         //        cout << "zzz" << endl;
+        // TODO: potentially reset...
         return nullptr;
     }
 }
