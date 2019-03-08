@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
                 fstream output(stats.client_file, std::ios::out | std::ios::binary);
                 for (shared_ptr<Packet> packet_ptr : stats.packet_ptr_buffer)
                 {
-                    cout << "data byte " << packet_ptr->data_bytes << endl;
+                    // cout << "data byte " << packet_ptr->data_bytes << endl;
                     output.write(packet_ptr->data, packet_ptr->data_bytes);
                 }
                 output.close();
@@ -189,7 +189,6 @@ void syn_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     sprintf(file_name, "%s/%d.file", save_directory, id);
 
     strncpy(c_stats.client_file, file_name, 30);
-    cout << c_stats.client_file;
     c_stats.client_address = clientAddr;
     c_stats.client_addr_size = addr_size;
 
@@ -212,6 +211,7 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
     u_int32_t seq_num = Header::give_seq(recv_pack->header);
     client_stats &c_stats = clients_map[id];
     int packet_num = server_convert_to_packet_id(Header::give_seq(recv_pack->header) + nBytes - 12);
+    //mod
     cout << "packet number " << packet_num << endl;
     if (c_stats.packet_ptr_buffer.size() < packet_num)
     {
@@ -226,12 +226,27 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
 
     if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num)
     {
-        c_stats.last_legit_ack_num = Header::give_seq(recv_pack->header) + nBytes - 12;
+        cout << "c_stats.last_legit_ack_num" << c_stats.last_legit_ack_num << endl;
+        int j = server_convert_to_packet_id(Header::give_seq(recv_pack->header) + nBytes - 12);
+
+        cout << "j is : " << j << endl;
+        while (j < c_stats.packet_ptr_buffer.size()){
+             if (c_stats.packet_ptr_buffer[j] == nullptr){
+                 break;
+             }
+            j++;
+        }
+        
+       c_stats.last_legit_ack_num = server_convert_to_byte_num(j-1) + recv_pack->data_bytes;
+       cout << "c_stats.last_legit_ack_num" << c_stats.last_legit_ack_num << endl;
     }
 
     char local_buffer[DATA_BUFFER_SIZE]{'\0'}; //data buffer size is correct?
     Packet pack(local_buffer, 1, 4322, c_stats.last_legit_ack_num, id, ACK);
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
+
+
+
 
     // if all fin, write to file
     // ofstream output(c_stats.client_file, ios::out | ios::app | ios::binary);
@@ -246,9 +261,13 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
         // output.close();
         close(udpSocket);
         //          break;
+
     }
 
     // output.write(recv_pack.data, nBytes - 12);
+
+
+
 }
 
 void fin_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, shared_ptr<Packet> recv_pack)
@@ -257,14 +276,10 @@ void fin_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     char local_buffer[1]{'\0'};
     u_int32_t ack_reply = Header::give_seq(recv_pack->header) + 1;
     u_int16_t id = Header::give_id(recv_pack->header);
-    Packet pack(local_buffer, 1, 4323, ack_reply, id, FIN_ACK); // 1 need to change based on connection id;
-
-    // update share ptr deck
-    // update seq number
-    // update legit
+    Packet pack(local_buffer, 1, 4322, ack_reply, id, FIN_ACK); 
 
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
 
     //    ofstream output(file_name, ios::out | ios::trunc | ios::binary);
-    //
+
 }
