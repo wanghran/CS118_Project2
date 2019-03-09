@@ -47,12 +47,13 @@ using std::shared_ptr;
 
 struct client_stats
 {
-    int seq_num = 4322;
     int last_legit_ack_num = 12346;
     deque<shared_ptr<Packet>> packet_ptr_buffer;
     struct sockaddr_in client_address;
     socklen_t client_addr_size;
     char client_file[30];
+    int carry = 0;
+    int max_seq_num = 4322;
 };
 
 int cgwn_size = 1; //should be 512, will change later
@@ -208,9 +209,17 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
 {
 
     u_int16_t id = Header::give_id(recv_pack->header);
-    u_int32_t seq_num = Header::give_seq(recv_pack->header);
     client_stats &c_stats = clients_map[id];
-    int packet_num = server_convert_to_packet_id(Header::give_seq(recv_pack->header) + nBytes - 12);
+
+    
+    if (Header::give_seq(recv_pack->header) < c_stats.max_seq_num){
+        c_stats.carry = c_stats.carry + 1;
+        c_stats.max_seq_num = Header::give_seq(recv_pack->header);
+    }
+
+    cout <<" c_stats.carry:   == " <<  c_stats.carry << endl;
+
+    int packet_num = server_convert_to_packet_id_with_carry(Header::give_seq(recv_pack->header) + nBytes - 12,c_stats.carry ); // add carry
     //mod
     cout << "packet number " << packet_num << endl;
     if (c_stats.packet_ptr_buffer.size() < packet_num)
@@ -224,10 +233,13 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
 
     cout << c_stats.client_file << endl;
 
-    if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num)
+    if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num% (102400 + 1))
     {
+        c_stats.max_seq_num = Header::give_seq(recv_pack->header);
+
+
         cout << "c_stats.last_legit_ack_num" << c_stats.last_legit_ack_num << endl;
-        int j = server_convert_to_packet_id(Header::give_seq(recv_pack->header) + nBytes - 12);
+        int j = server_convert_to_packet_id_with_carry(Header::give_seq(recv_pack->header) + nBytes - 12, c_stats.carry);
 
         cout << "j is : " << j << endl;
         while (j < c_stats.packet_ptr_buffer.size()){
@@ -237,11 +249,12 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
             j++;
         }
         
-       c_stats.last_legit_ack_num = server_convert_to_byte_num(j-1) + recv_pack->data_bytes;
+       c_stats.last_legit_ack_num = server_convert_to_byte_num_with_carry(j-1,c_stats.carry) % (102400 + 1) + recv_pack->data_bytes;
+
        cout << "c_stats.last_legit_ack_num" << c_stats.last_legit_ack_num << endl;
     }
 
-    char local_buffer[DATA_BUFFER_SIZE]{'\0'}; //data buffer size is correct?
+    char local_buffer[0]{}; //data buffer size is correct?
     Packet pack(local_buffer, 1, 4322, c_stats.last_legit_ack_num, id, ACK);
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
 
