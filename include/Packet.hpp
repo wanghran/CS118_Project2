@@ -5,6 +5,12 @@
 #define HEADER_SIZE 12
 #define TOTAL_PACKET_SIZE 524
 
+#define SYN_ACK 6
+#define FIN_ACK 5
+#define ACK 4
+#define SYN 2
+#define FIN 1
+
 #include "Header.hpp"
 #include "Conn.hpp"
 
@@ -37,6 +43,8 @@ public:
     void send_packet(const Conn &conn);
     void print_packet() const;
     bool is_timeout() const;
+    void official_recv_print(bool is_client, int cwnd, int ss_thresh);
+    void official_send_print(bool is_client, int cwnd, int ss_thresh, bool is_dup);
     ~Packet();
     
 private:

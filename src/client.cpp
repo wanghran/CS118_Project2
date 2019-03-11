@@ -40,12 +40,6 @@ using std::vector;
 using std::shared_ptr;
 using std::string;
 
-#define SYN_ACK 6
-#define FIN_ACK 5
-#define ACK 4
-#define SYN 2
-#define FIN 1
-
 #define READ_DATA_BUFFER_SIZE 511
 #define CWND 512
 #define SS_THRESH 10000
@@ -86,9 +80,9 @@ int main(int argc, char* argv[]){
     init_connection(argc, argv, port, conn, file_name);
     
     
-    cout << "Client " << port << endl;
+    D(cout << "Client " << port << endl;)
     shared_ptr<Packet> syn_ack = syn(conn);
-    cout << "Syn done" << endl;
+    D(cout << "Syn done" << endl;)
     
     ClientData client_data = gen_client_data(file_name, syn_ack);
     
@@ -180,7 +174,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         if (bytes_send == 0) {
             break;
         }
-        cout << "Packet contains " << bytes_send << " bytes of data" << endl;
+        D(cout << "Packet contains " << bytes_send << " bytes of data" << endl;)
         int flag = 0;
         int ack_num = 0;
         if (cnt == 0) {
@@ -194,7 +188,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         ++cnt;
     }
     input.close();
-    cout << "Created " << rtn.packets.size() << " packets" << endl;
+    D(cout << "Created " << rtn.packets.size() << " packets" << endl;)
     return rtn;
 }
 
@@ -206,7 +200,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
         if (congestion_control_can_send(client_data, packet_ptr, bytes_sent_so_far)) {
             if (packet_ptr->state == INIT || packet_ptr->state == TIMEOUT) { // if already sent, no sent again
                 packet_ptr->send_packet(conn);
-                cout << ">>> Sent packet " << i << " packet content:" << endl;
+                D(cout << ">>> Sent packet " << i << " packet content:" << endl;)
                 packet_ptr->print_packet();
                 cnt += 1;
                 bytes_sent_so_far += (packet_ptr->data_bytes + 1);
@@ -216,7 +210,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
         }
     }
     if (cnt > 0) {
-        cout << "Sent " << cnt << " packets" << endl;
+        D(cout << "Sent " << cnt << " packets" << endl;)
     }
     
 }
