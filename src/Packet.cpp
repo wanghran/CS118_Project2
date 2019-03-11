@@ -103,7 +103,7 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     memset(buffer, '\0', sizeof(buffer));
     struct timeval timeout;
     timeout.tv_sec = 0; // TODO: fix server
-    timeout.tv_usec = 5000000; // 0.5 sec TODO: check!!!!!!!
+    timeout.tv_usec = 500000; // 0.5 sec TODO: check!!!!!!!
             cout << "xxx if select" << endl;
     if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
                 cout << "@@@yes" << endl;
@@ -128,8 +128,8 @@ void no_recv_check_exit() {
         timestamp cur = high_resolution_clock::now();
         double duration = std::chrono::duration_cast
         <std::chrono::milliseconds>(cur - most_recent_time_no_recved).count();
-//        cout << "duration " << duration << endl;
         if (duration > 10000) {
+                    cout << "ABORT: finally " << duration << " msecs passed" << endl;
             exit(EXIT_FAILURE);
         }
 //        cout << "@" << endl;

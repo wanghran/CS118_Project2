@@ -150,15 +150,15 @@ int main(int argc, char *argv[])
             cout << "recv_pack.header.ack_num " << ntohl(recv_pack->header.ack_num) << endl;
             cout << "recv_pack.header.ID " << ntohs(recv_pack->header.ID) << endl;
             cout << "recv_pack.header.flag " << ntohs(recv_pack->header.flag) << endl;
-            cout << "recv_pack.data " << recv_pack->data << "\n"
-                 << endl;
+//            cout << "recv_pack.data " << recv_pack->data << "\n"
+//                 << endl;
 
             if (Header::give_flag(recv_pack->header) == SYN)
             {
                 syn_handler(udpSocket, clientAddr, addr_size, recv_pack, save_directory);
                 continue;
             }
-            else if (Header::give_flag(recv_pack->header) == NO_FLAG)
+            else if (recv_pack->data_bytes > 1)
             {
                 normal_packet_handler(udpSocket, clientAddr, addr_size, recv_pack, nBytes);
                 continue;
@@ -212,7 +212,7 @@ void syn_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     // update legit
 
     clients_map[id] = c_stats;
-    sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
+    sendto(udpSocket, pack.total_data, 13, 0, (struct sockaddr *)&clientAddr, addr_size);
 }
 
 void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, shared_ptr<Packet> recv_pack, int nBytes)
@@ -278,7 +278,7 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
 
     char local_buffer[0]{}; //data buffer size is correct?
     Packet pack(local_buffer, 1, 4322, c_stats.last_legit_ack_num, id, ACK);
-    sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
+    sendto(udpSocket, pack.total_data, 12, 0, (struct sockaddr *)&clientAddr, addr_size);
 
     // if all fin, write to file
     // ofstream output(c_stats.client_file, ios::out | ios::app | ios::binary);

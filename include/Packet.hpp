@@ -19,7 +19,7 @@ using std::chrono::high_resolution_clock;
 using std::shared_ptr;
 
 
-enum State {INIT, SENT, ACKED};
+enum State {INIT, SENT, ACKED, TIMEOUT};
 
 class Packet
 {
