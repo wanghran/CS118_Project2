@@ -69,8 +69,6 @@ void recv_acks(ClientData &client_data, Conn &conn);
 void timeout_resend(ClientData &client_data, const Conn &conn);
 bool congestion_control_can_send
 (ClientData &client_data, const shared_ptr<Packet> packet_ptr, int bytes_sent_so_far);
-void printInt_32(uint32_t x);
-void printInt_16(uint16_t x);
 
 
 int main(int argc, char* argv[]){
@@ -200,6 +198,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
         if (congestion_control_can_send(client_data, packet_ptr, bytes_sent_so_far)) {
             if (packet_ptr->state == INIT || packet_ptr->state == TIMEOUT) { // if already sent, no sent again
                 packet_ptr->send_packet(conn);
+                packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
                 D(cout << ">>> Sent packet " << i << " packet content:" << endl;)
                 packet_ptr->print_packet();
                 cnt += 1;
@@ -219,6 +218,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 void recv_acks(ClientData &client_data, Conn &conn) {
     shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
     if (recv_pack_ptr) {
+        recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
         int n_bytes = recv_pack_ptr->total_bytes;
         D(cout << "<<< Received ack, packet content:" << endl;)
         recv_pack_ptr->print_packet();
@@ -271,18 +271,21 @@ bool congestion_control_can_send
 shared_ptr<Packet> syn(Conn &conn) {
     char SYN_buffer[1];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
-    Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
+    Packet SYN_pack(SYN_buffer, 0, 12345, 0, 0, SYN);
     while (true) {
         if (SYN_pack.state == INIT) {
             D(cout << "Syn: Init sending" << endl;)
             SYN_pack.send_packet(conn);
+            SYN_pack.official_send_print(true, CWND, SS_THRESH, false);
         }
         if (SYN_pack.is_timeout()) {
             D(cout << "Syn: Resending" << endl;)
             SYN_pack.send_packet(conn);
+            SYN_pack.official_send_print(true, CWND, SS_THRESH, false);
         }
         shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
         if (recv_pack_ptr) {
+            recv_pack_ptr->official_recv_print(true, CWND, SS_THRESH);
             recv_pack_ptr->print_packet();
             assert (ntohs(recv_pack_ptr->header.flag) == 6);
             return recv_pack_ptr;
@@ -300,22 +303,25 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
         int seq_num = Header::give_seq(client_data.packets.back()->header) + 1 + client_data.packets.back()->data_bytes;
         D(cout << "@@@ seq_num " << seq_num << endl;)
         client_data.packets.back()->print_packet();
-        Packet FIN_pack1(FIN_buffer, DATA_BUFFER_SIZE, seq_num, 0, Header::give_id(syn_ack->header), FIN);
+        Packet FIN_pack1(FIN_buffer, 0, seq_num, 0, Header::give_id(syn_ack->header), FIN);
         D(cout << "Fin: pack 1" << endl;)
         FIN_pack1.print_packet();
         FIN_pack1.send_packet(conn);
+        FIN_pack1.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
         while (true) {
             shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
             D(cout << "recv or not" << endl;)
             if (recv_pack_ptr) {
+                recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
                 D(cout << ":)" << endl;)
                 D(cout << "Fin: pack 1 acked" << endl;)
                 recv_pack_ptr->print_packet();
                 //                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
-                Packet FIN_pack2(FIN_buffer, DATA_BUFFER_SIZE, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
+                Packet FIN_pack2(FIN_buffer, 0, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
                 D(cout << "Fin: pack 2" << endl;)
                 FIN_pack2.print_packet();
                 FIN_pack2.send_packet(conn);
+                FIN_pack2.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
                 return;
             } else {
                 D(cout << ":(" << endl;)
@@ -332,25 +338,12 @@ bool done(const ClientData &client_data) {
     int cnt = 0;
     for (auto const& packet_ptr : client_data.packets) {
         if (packet_ptr->state != ACKED) {
-            cout << "Packet " << cnt << " not acked yet --> not done" << endl;
+            D(cout << "Packet " << cnt << " not acked yet --> not done" << endl;)
             return false;
         }
         ++cnt;
     }
-    cout << "All packets acked --> done" << endl;
+    D(cout << "All packets acked --> done" << endl;)
     return true;
 }
-
-
-void printInt_32(uint32_t x)
-{
-    cout << setfill('0') << setw(8) << hex << x << '\n';
-}
-
-void printInt_16(uint16_t x)
-{
-    cout << setfill('0') << setw(4) << hex << x << '\n';
-}
-
-
 

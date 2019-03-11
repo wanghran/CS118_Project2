@@ -102,7 +102,7 @@ bool Packet::is_timeout() const {
 void Packet::official_recv_print(bool is_client, int cwnd, int ss_thresh) {
     cout << "RECV " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
     if (is_client) {
-        cout << cwnd << " " << ss_thresh;
+        cout << " " << cwnd << " " << ss_thresh;
     }
     cout << " ";
     switch (Header::give_flag(header)) {
@@ -134,7 +134,7 @@ void Packet::official_recv_print(bool is_client, int cwnd, int ss_thresh) {
 void Packet::official_send_print(bool is_client, int cwnd, int ss_thresh, bool is_dup) {
     cout << "SEND " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
     if (is_client) {
-        cout << cwnd << " " << ss_thresh;
+        cout << " " << cwnd << " " << ss_thresh;
     }
     cout << " ";
     if (is_dup) {

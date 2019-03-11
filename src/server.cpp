@@ -153,20 +153,17 @@ int main(int argc, char *argv[])
             D(cout << "recv_pack.header.flag " << ntohs(recv_pack->header.flag) << endl;)
 //            cout << "recv_pack.data " << recv_pack->data << "\n"
 //                 << endl;
+            cout << "@@@Header::give_flag(recv_pack->header) " << Header::give_flag(recv_pack->header)  << endl;
 
             if (Header::give_flag(recv_pack->header) == SYN)
             {
                 syn_handler(udpSocket, clientAddr, addr_size, recv_pack, save_directory);
                 continue;
             }
-            else if (recv_pack->data_bytes > 1)
-            {
-                normal_packet_handler(udpSocket, clientAddr, addr_size, recv_pack, nBytes);
-                continue;
-            }
             // fin needs to change
             else if (Header::give_flag(recv_pack->header) == FIN)
             {
+                cout << "^^^" << endl;
                 u_int16_t id = Header::give_id(recv_pack->header);
                 client_stats stats = clients_map[id];
                 fstream output(stats.client_file, std::ios::out | std::ios::binary);
@@ -175,16 +172,25 @@ int main(int argc, char *argv[])
                 {
                     // cout << "data byte " << packet_ptr->data_bytes << endl;
                     if (packet_ptr == nullptr){
+                                    D(cout << "&&^^^" << endl);
                         D(cout << "null at "<< endl;)
                         break;
                     }
                     else{
+                                    D(cout << "!!!^^^" << endl);
                         D(cout << packet_ptr->data_bytes<< endl;)
                     }
+                                D(cout << ")))^^^" << endl);
                     output.write(packet_ptr->data, packet_ptr->data_bytes);
                 }
+                            D(cout << "@@@@@@^^^" << endl);
                 output.close();
                 fin_handler(udpSocket, clientAddr, addr_size, recv_pack);
+                continue;
+            }
+            else if (recv_pack->data_bytes > 1)
+            {
+                normal_packet_handler(udpSocket, clientAddr, addr_size, recv_pack, nBytes);
                 continue;
             }
         }
@@ -306,8 +312,7 @@ void fin_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     u_int32_t ack_reply = Header::give_seq(recv_pack->header) + 1;
     u_int16_t id = Header::give_id(recv_pack->header);
     Packet pack(local_buffer, 1, 4322, ack_reply, id, FIN_ACK);
-
+    cout << "$$" << Header::give_flag(pack.header);
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
-
     //    ofstream output(file_name, ios::out | ios::trunc | ios::binary);
 }
