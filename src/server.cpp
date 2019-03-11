@@ -47,12 +47,15 @@ using std::shared_ptr;
 
 struct client_stats
 {
-    int seq_num = 4322;
     int last_legit_ack_num = 12346;
-    deque<shared_ptr<Packet>> packet_ptr_buffer;
+    // deque<shared_ptr<Packet>> packet_ptr_buffer(30000);
+    shared_ptr<Packet> packet_ptr_buffer[30000] = { nullptr };
+    // vector<shared_ptr<Packet>> packet_ptr_buffer(30000);
     struct sockaddr_in client_address;
     socklen_t client_addr_size;
     char client_file[30];
+    int carry = 0;
+    int max_seq_num = 4322;
 };
 
 int cgwn_size = 1; //should be 512, will change later
@@ -166,19 +169,27 @@ int main(int argc, char *argv[])
                 u_int16_t id = Header::give_id(recv_pack->header);
                 client_stats stats = clients_map[id];
                 fstream output(stats.client_file, std::ios::out | std::ios::binary);
+                // cout << "size of packetlist:  " << stats.packet_ptr_buffer.size() << endl;
                 for (shared_ptr<Packet> packet_ptr : stats.packet_ptr_buffer)
                 {
-                    cout << "data byte " << packet_ptr->data_bytes << endl;
+                    // cout << "data byte " << packet_ptr->data_bytes << endl;
+                    if (packet_ptr == nullptr){
+                        cout << "null at "<< endl;
+                        break;
+                    }
+                    else{
+                        cout << packet_ptr->data_bytes<< endl;
+                    }
                     output.write(packet_ptr->data, packet_ptr->data_bytes);
                 }
                 output.close();
                 fin_handler(udpSocket, clientAddr, addr_size, recv_pack);
                 continue;
             }
-
         }
     }
 }
+
 
 void syn_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, shared_ptr<Packet> recv_pack, char *save_directory)
 {
@@ -189,7 +200,6 @@ void syn_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     sprintf(file_name, "%s/%d.file", save_directory, id);
 
     strncpy(c_stats.client_file, file_name, 30);
-    cout << c_stats.client_file;
     c_stats.client_address = clientAddr;
     c_stats.client_addr_size = addr_size;
 
@@ -209,27 +219,64 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
 {
 
     u_int16_t id = Header::give_id(recv_pack->header);
-    u_int32_t seq_num = Header::give_seq(recv_pack->header);
     client_stats &c_stats = clients_map[id];
-    int packet_num = server_convert_to_packet_id(Header::give_seq(recv_pack->header) + nBytes - 12);
-    cout << "packet number " << packet_num << endl;
-    if (c_stats.packet_ptr_buffer.size() < packet_num)
+    
+    // if (Header::give_seq(recv_pack->header))
+    int temp_carry = c_stats.carry;
+    if (Header::give_seq(recv_pack->header) < c_stats.max_seq_num/20)
     {
-        for (int i = 0; i < packet_num - c_stats.packet_ptr_buffer.size(); i++)
-        {
-            c_stats.packet_ptr_buffer.push_back(nullptr);
-        }
-        c_stats.packet_ptr_buffer[packet_num - 1] = recv_pack;
+        temp_carry = c_stats.carry + 1;
     }
+
+    cout << "c_stats.last_legit_ack_num0  ---" << c_stats.last_legit_ack_num << endl;
+    cout << " c_stats.carry:   == " << c_stats.carry << endl;
+    cout << "give_seq(recv_pack->header)  ---" << Header::give_seq(recv_pack->header) << endl;
+    cout << "c_stats.max_seq_num  ---" << c_stats.max_seq_num << endl;
+    cout << "temp_carry   ---" << temp_carry << endl;
+  
+
+
+    int packet_num = server_convert_to_packet_id_with_carry(Header::give_seq(recv_pack->header) + nBytes - 12, temp_carry); // add carry
+    //mod
+    // cout << "packet number " << packet_num << endl;
+    // cout << "cstats ssssssssssss  " <<  c_stats.packet_ptr_buffer.size() << endl;
+    // if (c_stats.packet_ptr_buffer.size() < packet_num)
+    // {
+    //     for (int i = 0; i < packet_num - c_stats.packet_ptr_buffer.size(); i++)
+    //     {
+    //         c_stats.packet_ptr_buffer.push_back(nullptr);
+    //     }
+    // }
+    //  cout << "cstats ssssssssssss  " <<  c_stats.packet_ptr_buffer.size() << endl;
+
+    //if packetnum - 1 != nullptr: DROP
+      c_stats.packet_ptr_buffer[packet_num - 1] = recv_pack;
+      
+   
 
     cout << c_stats.client_file << endl;
 
-    if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num)
+    if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num % (102400 + 1))
     {
-        c_stats.last_legit_ack_num = Header::give_seq(recv_pack->header) + nBytes - 12;
+         
+        if (Header::give_seq(recv_pack->header) < c_stats.max_seq_num/20)
+        {
+            c_stats.carry = c_stats.carry + 1;
+        }
+        c_stats.max_seq_num = Header::give_seq(recv_pack->header);
+
+        int j = server_convert_to_packet_id_with_carry(Header::give_seq(recv_pack->header) + nBytes - 12, c_stats.carry);
+
+        cout << "j is : " << j << endl;
+        while (c_stats.packet_ptr_buffer[j] != nullptr)
+        {
+            j++;
+        }
+
+        c_stats.last_legit_ack_num = server_convert_to_byte_num_with_carry(j - 1, c_stats.carry) % (102400 + 1) + recv_pack->data_bytes;
     }
 
-    char local_buffer[DATA_BUFFER_SIZE]{'\0'}; //data buffer size is correct?
+    char local_buffer[0]{}; //data buffer size is correct?
     Packet pack(local_buffer, 1, 4322, c_stats.last_legit_ack_num, id, ACK);
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
 
@@ -247,7 +294,7 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
         close(udpSocket);
         //          break;
     }
-
+      cout << "\n\n" << endl;
     // output.write(recv_pack.data, nBytes - 12);
 }
 
@@ -257,14 +304,9 @@ void fin_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     char local_buffer[1]{'\0'};
     u_int32_t ack_reply = Header::give_seq(recv_pack->header) + 1;
     u_int16_t id = Header::give_id(recv_pack->header);
-    Packet pack(local_buffer, 1, 4323, ack_reply, id, FIN_ACK); // 1 need to change based on connection id;
-
-    // update share ptr deck
-    // update seq number
-    // update legit
+    Packet pack(local_buffer, 1, 4322, ack_reply, id, FIN_ACK);
 
     sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
 
     //    ofstream output(file_name, ios::out | ios::trunc | ios::binary);
-    //
 }
