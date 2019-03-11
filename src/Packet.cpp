@@ -11,6 +11,11 @@ using std::endl;
 
 #define TOTAL_BUFFER_SIZE 524
 
+timestamp most_recent_time_no_recved;
+bool no_recv_check_exit_can_check = false;
+
+void no_recv_check_exit();
+
 Packet::Packet() {}
 
 Packet::Packet(char *send_buffer, int buffer_size, unsigned int seq_num,
@@ -96,23 +101,42 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     char buffer[TOTAL_BUFFER_SIZE];
     //    FD_ZERO(&conn.read_fds);
     memset(buffer, '\0', sizeof(buffer));
-    //    cout << "xxx" << endl;
     struct timeval timeout;
     timeout.tv_sec = 0; // TODO: fix server
-    timeout.tv_usec = 50000000; // 0.5 sec TODO: check!!!!!!!
+    timeout.tv_usec = 5000000; // 0.5 sec TODO: check!!!!!!!
+            cout << "xxx if select" << endl;
     if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
-        //        cout << "yyy" << endl;
+                cout << "@@@yes" << endl;
+        no_recv_check_exit_can_check = false;
         int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
                                    (struct sockaddr *)&conn.addr, &conn.addr_size));
         //        printf("%s\n", strerror(errno));
         cout << "n_bytes " << n_bytes << endl;
         return shared_ptr<Packet>(new Packet(buffer, n_bytes));
     } else {
-        //        cout << "zzz" << endl;
+                cout << "@@@no" << endl;
         // TODO: potentially reset...
+        // Whenever client receives no packets from server for more than 10 seconds , it
+        // should abort the connection (close socket and exit with non-zero code).
+        no_recv_check_exit();
         return nullptr;
     }
 }
 
-
+void no_recv_check_exit() {
+    if (no_recv_check_exit_can_check) {
+        timestamp cur = high_resolution_clock::now();
+        double duration = std::chrono::duration_cast
+        <std::chrono::milliseconds>(cur - most_recent_time_no_recved).count();
+//        cout << "duration " << duration << endl;
+        if (duration > 10000) {
+            exit(EXIT_FAILURE);
+        }
+//        cout << "@" << endl;
+    } else {
+        most_recent_time_no_recved = high_resolution_clock::now();
+        no_recv_check_exit_can_check = true;
+//        cout << "@@@last_time_something_recved " << endl;
+    }
+}
 
