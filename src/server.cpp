@@ -307,7 +307,7 @@ void fin_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr_size, sha
     u_int16_t id = Header::give_id(recv_pack->header);
     Packet pack(local_buffer, 1, 4322, ack_reply, id, FIN_ACK);
 
-    sendto(udpSocket, pack.total_data, TOTAL_BUFFER_SIZE, 0, (struct sockaddr *)&clientAddr, addr_size);
+    sendto(udpSocket, pack.total_data, 13, 0, (struct sockaddr *)&clientAddr, addr_size);
 
     //    ofstream output(file_name, ios::out | ios::trunc | ios::binary);
 }
