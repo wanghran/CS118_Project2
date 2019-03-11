@@ -35,13 +35,13 @@ include_directories(include)
 # TODO(!): Update name and srcs
 add_library(lib_header src/Header.cpp)
 add_library(lib_packet src/Packet.cpp)
-# add_library(utils include/utils.hpp)
+add_library(utils src/utils.cpp)
 
 # TODO(!): Update executable name, srcs, and deps
-add_executable(server src/server.cpp include/utils.hpp)
+add_executable(server src/server.cpp)
 add_executable(client src/client.cpp)
-target_link_libraries(server lib_packet lib_header)
-target_link_libraries(client lib_packet lib_header)
+target_link_libraries(server lib_packet lib_header utils)
+target_link_libraries(client lib_packet lib_header utils) 
 
 # TODO(!): Update test executable name, srcs, and deps
 # add_executable(header_test tests/tcp_header_test.cpp)

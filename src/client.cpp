@@ -226,10 +226,10 @@ void recv_acks(ClientData &client_data, Conn &conn) {
     shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
     if (recv_pack_ptr) {
         int n_bytes = recv_pack_ptr->total_bytes;
-        cout << "<<< Received ack, packet content:" << endl;
+        D(cout << "<<< Received ack, packet content:" << endl;)
         recv_pack_ptr->print_packet();
         int packet_id = client_convert_to_packet_id(Header::give_ack(recv_pack_ptr->header), n_bytes);
-        cout << "<<< Packet " << packet_id << " acked" << endl;
+        D(cout << "<<< Packet " << packet_id << " acked" << endl;)
         assert (packet_id >= 0 and packet_id < client_data.packets.size());
         client_data.packets[packet_id]->state = ACKED;
         if (client_data.left < client_data.packets.size() - 1) {
@@ -243,7 +243,7 @@ void recv_acks(ClientData &client_data, Conn &conn) {
         }
         
     } else {
-        cout << "0.5 secs has passed --> all packets that have been sent are timeout" << endl;
+        D(cout << "0.5 secs has passed --> all packets that have been sent are timeout" << endl;)
     }
 }
 
@@ -261,7 +261,7 @@ void timeout_resend(ClientData &client_data, const Conn &conn) {
         }
     }
     if (cnt > 0) {
-        cout << "Resent " << cnt << " packets" << endl;
+        D(cout << "Resent " << cnt << " packets" << endl;)
     }
 }
 
@@ -269,7 +269,7 @@ void timeout_resend(ClientData &client_data, const Conn &conn) {
 bool congestion_control_can_send
 (ClientData &client_data, const shared_ptr<Packet> packet_ptr, int bytes_sent_so_far) {
     int total_would_be = bytes_sent_so_far + packet_ptr->data_bytes + 1;
-    cout << "----- total_would_be " << total_would_be << " client_data.cwnd " << client_data.cwnd << endl;
+    D(cout << "----- total_would_be " << total_would_be << " client_data.cwnd " << client_data.cwnd << endl;)
     return total_would_be <= client_data.cwnd;
 }
 
@@ -280,11 +280,11 @@ shared_ptr<Packet> syn(Conn &conn) {
     Packet SYN_pack(SYN_buffer, DATA_BUFFER_SIZE, 12345, 0, 0, SYN);
     while (true) {
         if (SYN_pack.state == INIT) {
-            cout << "Syn: Init sending" << endl;
+            D(cout << "Syn: Init sending" << endl;)
             SYN_pack.send_packet(conn);
         }
         if (SYN_pack.is_timeout()) {
-            cout << "Syn: Resending" << endl;
+            D(cout << "Syn: Resending" << endl;)
             SYN_pack.send_packet(conn);
         }
         shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
@@ -304,27 +304,27 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
         memset(FIN_buffer, '\0', sizeof(FIN_buffer));
         assert (!client_data.packets.empty());
         int seq_num = Header::give_seq(client_data.packets.back()->header) + 1 + client_data.packets.back()->data_bytes;
-        cout << "@@@ seq_num " << seq_num << endl;
+        D(cout << "@@@ seq_num " << seq_num << endl;)
         client_data.packets.back()->print_packet();
         Packet FIN_pack1(FIN_buffer, DATA_BUFFER_SIZE, seq_num, 0, Header::give_id(syn_ack->header), FIN);
-        cout << "Fin: pack 1" << endl;
+        D(cout << "Fin: pack 1" << endl;)
         FIN_pack1.print_packet();
         FIN_pack1.send_packet(conn);
         while (true) {
             shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
-            cout << "recv or not" << endl;
+            D(cout << "recv or not" << endl;)
             if (recv_pack_ptr) {
-                cout << ":)" << endl;
-                cout << "Fin: pack 1 acked" << endl;
+                D(cout << ":)" << endl;)
+                D(cout << "Fin: pack 1 acked" << endl;)
                 recv_pack_ptr->print_packet();
                 //                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
                 Packet FIN_pack2(FIN_buffer, DATA_BUFFER_SIZE, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
-                cout << "Fin: pack 2" << endl;
+                D(cout << "Fin: pack 2" << endl;)
                 FIN_pack2.print_packet();
                 FIN_pack2.send_packet(conn);
                 return;
             } else {
-                cout << ":(" << endl;
+                D(cout << ":(" << endl;)
                 //                exit(-1);
                 continue; // keep sending the syn packet until receiving ack
             }

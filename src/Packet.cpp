@@ -1,4 +1,5 @@
 #include "Packet.hpp"
+#include "utils.hpp"
 
 #include <cstring>
 #include <iostream>
@@ -64,13 +65,13 @@ void Packet::send_packet(const Conn &conn) {
 }
 
 void Packet::print_packet() const {
-    cout << "----------\n";
-    cout << "header.seq_num " << ntohl(header.seq_num) << endl;
-    cout << "header.ack_num " << ntohl(header.ack_num) << endl;
-    cout << "header.ID " << ntohs(header.ID) << endl;
-    cout << "header.flag " << ntohs(header.flag) << endl;
-    cout << "data " << data << endl;
-    cout << "----------\n\n";
+    D(cout << "----------\n";)
+    D(cout << "header.seq_num " << ntohl(header.seq_num) << endl;)
+    D(cout << "header.ack_num " << ntohl(header.ack_num) << endl;)
+    D(cout << "header.ID " << ntohs(header.ID) << endl;)
+    D(cout << "header.flag " << ntohs(header.flag) << endl;)
+    D(cout << "data " << data << endl;)
+    D(cout << "----------\n\n";)
 }
 
 char *Packet::memcopy_send(char *dest, void *src, size_t stride) {
@@ -104,17 +105,17 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     struct timeval timeout;
     timeout.tv_sec = 0; // TODO: fix server
     timeout.tv_usec = 500000; // 0.5 sec TODO: check!!!!!!!
-            cout << "xxx if select" << endl;
+            D(cout << "xxx if select" << endl;)
     if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
-                cout << "@@@yes" << endl;
+                D(cout << "@@@yes" << endl;)
         no_recv_check_exit_can_check = false;
         int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
                                    (struct sockaddr *)&conn.addr, &conn.addr_size));
         //        printf("%s\n", strerror(errno));
-        cout << "n_bytes " << n_bytes << endl;
+        D(cout << "n_bytes " << n_bytes << endl;)
         return shared_ptr<Packet>(new Packet(buffer, n_bytes));
     } else {
-                cout << "@@@no" << endl;
+                D(cout << "@@@no" << endl;)
         // TODO: potentially reset...
         // Whenever client receives no packets from server for more than 10 seconds , it
         // should abort the connection (close socket and exit with non-zero code).

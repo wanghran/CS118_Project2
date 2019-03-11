@@ -30,6 +30,7 @@ using std::endl;
 using std::ios;
 using std::map;
 using std::ofstream;
+using std::fstream;
 using std::shared_ptr;
 
 #define SYN_ACK 6
@@ -146,10 +147,10 @@ int main(int argc, char *argv[])
             shared_ptr<Packet> recv_pack(new Packet(buffer, nBytes));
 
             printf("server received %d bytes\n", nBytes);
-            cout << "recv_pack.header.seq_num " << ntohl(recv_pack->header.seq_num) << endl;
-            cout << "recv_pack.header.ack_num " << ntohl(recv_pack->header.ack_num) << endl;
-            cout << "recv_pack.header.ID " << ntohs(recv_pack->header.ID) << endl;
-            cout << "recv_pack.header.flag " << ntohs(recv_pack->header.flag) << endl;
+            D(cout << "recv_pack.header.seq_num " << ntohl(recv_pack->header.seq_num) << endl;)
+            D(cout << "recv_pack.header.ack_num " << ntohl(recv_pack->header.ack_num) << endl;)
+            D(cout << "recv_pack.header.ID " << ntohs(recv_pack->header.ID) << endl;)
+            D(cout << "recv_pack.header.flag " << ntohs(recv_pack->header.flag) << endl;)
 //            cout << "recv_pack.data " << recv_pack->data << "\n"
 //                 << endl;
 
@@ -174,11 +175,11 @@ int main(int argc, char *argv[])
                 {
                     // cout << "data byte " << packet_ptr->data_bytes << endl;
                     if (packet_ptr == nullptr){
-                        cout << "null at "<< endl;
+                        D(cout << "null at "<< endl;)
                         break;
                     }
                     else{
-                        cout << packet_ptr->data_bytes<< endl;
+                        D(cout << packet_ptr->data_bytes<< endl;)
                     }
                     output.write(packet_ptr->data, packet_ptr->data_bytes);
                 }
@@ -228,11 +229,11 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
         temp_carry = c_stats.carry + 1;
     }
 
-    cout << "c_stats.last_legit_ack_num0  ---" << c_stats.last_legit_ack_num << endl;
-    cout << " c_stats.carry:   == " << c_stats.carry << endl;
-    cout << "give_seq(recv_pack->header)  ---" << Header::give_seq(recv_pack->header) << endl;
-    cout << "c_stats.max_seq_num  ---" << c_stats.max_seq_num << endl;
-    cout << "temp_carry   ---" << temp_carry << endl;
+    D(cout << "c_stats.last_legit_ack_num0  ---" << c_stats.last_legit_ack_num << endl;)
+    D(cout << " c_stats.carry:   == " << c_stats.carry << endl;)
+    D(cout << "give_seq(recv_pack->header)  ---" << Header::give_seq(recv_pack->header) << endl;)
+    D(cout << "c_stats.max_seq_num  ---" << c_stats.max_seq_num << endl;)
+    D(cout << "temp_carry   ---" << temp_carry << endl;)
   
 
 
@@ -254,7 +255,7 @@ void normal_packet_handler(int udpSocket, sockaddr_in clientAddr, socklen_t addr
       
    
 
-    cout << c_stats.client_file << endl;
+    D(cout << c_stats.client_file << endl;)
 
     if (Header::give_seq(recv_pack->header) == c_stats.last_legit_ack_num % (102400 + 1))
     {
