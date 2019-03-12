@@ -45,6 +45,7 @@ public:
     bool is_timeout() const;
     void official_recv_print(bool is_client, int cwnd, int ss_thresh);
     void official_send_print(bool is_client, int cwnd, int ss_thresh, bool is_dup);
+    void official_drop_print();
     ~Packet();
     
 private:

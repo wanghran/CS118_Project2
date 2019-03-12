@@ -167,6 +167,40 @@ void Packet::official_send_print(bool is_client, int cwnd, int ss_thresh, bool i
     cout << endl;
 }
 
+void Packet::official_drop_print()
+{
+    cout << "DROP " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header) << " ";
+    switch (Header::give_flag(header))
+        {
+        case SYN_ACK:
+        {
+            cout << "ACK SYN";
+            break;
+        }
+        case FIN_ACK:
+        {
+            cout << "ACK FIN";
+            break;
+        }
+        case ACK:
+        {
+            cout << "ACK";
+            break;
+        }
+        case SYN:
+        {
+            cout << "SYN";
+            break;
+        }
+        case FIN:
+        {
+            cout << "FIN";
+            break;
+        }
+    }
+    cout << endl;
+}
+
 shared_ptr<Packet> recv_packet(Conn &conn) {
     char buffer[TOTAL_BUFFER_SIZE];
     //    FD_ZERO(&conn.read_fds);
