@@ -219,6 +219,8 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     } else {
                 D(cout << "@@@no" << endl;)
         // TODO: potentially reset...
+        FD_ZERO(&conn.read_fds);
+        FD_SET(conn.socket, &conn.read_fds); // checked :)
         // Whenever client receives no packets from server for more than 10 seconds , it
         // should abort the connection (close socket and exit with non-zero code).
         no_recv_check_exit();

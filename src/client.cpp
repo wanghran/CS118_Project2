@@ -188,7 +188,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         ++cnt;
     }
     input.close();
-    D(cout << "Created " << rtn.packets.size() << " packets" << endl;)
+//    cout << "Created " << rtn.packets.size() << " packets" << endl;
     return rtn;
 }
 
@@ -231,6 +231,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 
 void recv_acks(ClientData &client_data, Conn &conn) {
     assert (client_data.current_sent >= 0);
+    D(cout << "### client_data.current_sent " << client_data.current_sent << endl;)
     for (int i = 0 ; i < client_data.current_sent; ++i) {
         shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
         if (recv_pack_ptr) {
@@ -242,17 +243,16 @@ void recv_acks(ClientData &client_data, Conn &conn) {
             D(cout << "<<< Packet " << packet_id << " acked" << endl;)
             assert (packet_id >= 0 and packet_id < client_data.packets.size());
             client_data.packets[packet_id]->state = ACKED;
-            cout << "@@@ Header::give_ack(recv_pack_ptr->header) " << Header::give_ack(recv_pack_ptr->header) << " packet_id " << packet_id << endl;
+//            cout << "@@@ Header::give_ack(recv_pack_ptr->header) " << Header::give_ack(recv_pack_ptr->header) << " packet_id " << packet_id << endl;
             if (client_data.left < client_data.packets.size() - 1) {
                 client_data.left = packet_id + 1;
-                assert (client_data.left >= 0 and client_data.left < client_data.packets.size());
+//                assert (client_data.left >= 0 and client_data.left < client_data.packets.size());
             }
             if (client_data.cwnd < client_data.ss_thresh) {
                 client_data.cwnd += CWND;
             } else {
                 client_data.cwnd += (CWND * CWND) / client_data.cwnd;
             }
-            
         } else {
             D(cout << "0.5 secs has passed --> all packets that have been sent are timeout" << endl;)
         }
@@ -378,15 +378,16 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
 
 
 bool done(const ClientData &client_data) {
-    int cnt = 0;
-    for (auto const& packet_ptr : client_data.packets) {
-        if (packet_ptr->state != ACKED) {
-            D(cout << "Packet " << cnt << " not acked yet --> not done" << endl;)
-            return false;
-        }
-        ++cnt;
-    }
-    D(cout << "All packets acked --> done" << endl;)
-    return true;
+//    int cnt = 0;
+//    for (auto const& packet_ptr : client_data.packets) {
+//        if (packet_ptr->state != ACKED) {
+//            D(cout << "Packet " << cnt << " not acked yet --> not done" << endl;)
+//            return false;
+//        }
+//        ++cnt;
+//    }
+//    D(cout << "All packets acked --> done" << endl;)
+//    return true;
+    return client_data.packets.back()->state == ACKED;
 }
 
