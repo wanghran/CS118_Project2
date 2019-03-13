@@ -29,7 +29,7 @@ void Header::set_flag(uint16_t flag)
 }
 
 Header::Header(unsigned int seq_num, unsigned int ack_num,
-                       unsigned short ID, unsigned short flag)
+               unsigned short ID, unsigned short flag)
 {
   Header::set_seq_num(seq_num);
   Header::set_ack_num(ack_num);

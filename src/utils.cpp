@@ -1,6 +1,5 @@
 #include "utils.hpp"
 
-
 //int send_carry = 0;
 int carry = 0;
 int cur_max_byte_num = 0;
@@ -30,12 +29,16 @@ int server_convert_to_byte_num_with_carry(int packet_id, int c)
 
 int client_convert_to_packet_id(int byte_num, int recv_bytes)
 {
-//    cout << "###@@ byte_num " << byte_num << " " << " recv_bytes " << recv_bytes << " " << " carry " << carry << " cur_max_byte_num " << cur_max_byte_num << " rtn " << server_convert_to_packet_id(byte_num - recv_bytes) - 1 << endl;
-    if (byte_num < cur_max_byte_num / 20) { // too hacky: server tells client that the carry happened
+    //    cout << "###@@ byte_num " << byte_num << " " << " recv_bytes " << recv_bytes << " " << " carry " << carry << " cur_max_byte_num " << cur_max_byte_num << " rtn " << server_convert_to_packet_id(byte_num - recv_bytes) - 1 << endl;
+    if (byte_num < cur_max_byte_num / 20)
+    { // too hacky: server tells client that the carry happened
         cur_max_byte_num = 0;
         ++carry;
-    } else {
-        if (byte_num > cur_max_byte_num) {
+    }
+    else
+    {
+        if (byte_num > cur_max_byte_num)
+        {
             cur_max_byte_num = byte_num;
         }
     }
@@ -48,13 +51,13 @@ int client_get_next_seq_num(int seq_num)
     int rtn = seq_num;
     if (rtn > MAX_NUM)
     {
-//        cout << "    @@@ " << carry << " " << rtn << " " << MAX_NUM << endl;
-//        ++send_carry;
+        //        cout << "    @@@ " << carry << " " << rtn << " " << MAX_NUM << endl;
+        //        ++send_carry;
         return rtn - MAX_NUM - 1;
     }
     else
     {
-//        cout << " ###" << rtn << endl;
+        //        cout << " ###" << rtn << endl;
         return rtn;
     }
 }

@@ -62,13 +62,11 @@ map<int, client_stats> clients_map;
 
 void sig_quit_handler(int s)
 {
-    cerr << "Interrupt signal (SIGQUIT) received.\n";
     exit(0);
 }
 
 void sig_term_handler(int s)
 {
-    cerr << "Interrupt signal (SIGTERM) received.\n";
     exit(0);
 }
 
@@ -134,6 +132,7 @@ int main(int argc, char *argv[])
 
     while (1)
     {
+
 
         memset(buffer, '\0', sizeof(buffer));
 

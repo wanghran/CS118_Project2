@@ -52,19 +52,24 @@ Packet::Packet(char *recv_buffer, int bytes_recved)
 
 Packet::~Packet() {}
 
-void Packet::send_packet(const Conn &conn) {
+void Packet::send_packet(const Conn &conn)
+{
     if (sendto(conn.socket, total_data,
                data_bytes + HEADER_SIZE, 0,
-               (struct sockaddr *)&conn.addr, conn.addr_size) < 0) {
+               (struct sockaddr *)&conn.addr, conn.addr_size) < 0)
+    {
         perror("send to");
         exit(EXIT_FAILURE);
-    } else {
+    }
+    else
+    {
         state = SENT;
         send_time = high_resolution_clock::now();
     }
 }
 
-void Packet::print_packet() const {
+void Packet::print_packet() const
+{
     D(cout << "----------\n";)
     D(cout << "header.seq_num " << ntohl(header.seq_num) << endl;)
     D(cout << "header.ack_num " << ntohl(header.ack_num) << endl;)
@@ -74,7 +79,8 @@ void Packet::print_packet() const {
     D(cout << "----------\n\n";)
 }
 
-char *Packet::memcopy_send(char *dest, void *src, size_t stride) {
+char *Packet::memcopy_send(char *dest, void *src, size_t stride)
+{
     memcpy(dest, src, stride);
     dest += stride;
     return dest;
@@ -87,90 +93,28 @@ char *Packet::memcopy_recv(void *dest, char *src, size_t stride)
     return src;
 }
 
-bool Packet::is_timeout() const {
-    if (state == SENT) {
+bool Packet::is_timeout() const
+{
+    if (state == SENT)
+    {
         timestamp current_time = high_resolution_clock::now();
-        double duration = std::chrono::duration_cast
-        <std::chrono::milliseconds>(current_time - send_time).count();
-//        cout << duration << endl;
+        double duration = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - send_time).count();
+        //        cout << duration << endl;
         return duration >= 500; // 0.5 sec
     }
     return false;
 }
 
-
-void Packet::official_recv_print(bool is_client, int cwnd, int ss_thresh) {
-    cout << "RECV " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
-    if (is_client) {
-        cout << " " << cwnd << " " << ss_thresh;
-    }
-    cout << " ";
-    switch (Header::give_flag(header)) {
-        case SYN_ACK: {
-            cout << "ACK SYN";
-            break;
-        }
-        case FIN_ACK: {
-            cout << "ACK FIN";
-            break;
-        }
-        case ACK: {
-            cout << "ACK";
-            break;
-        }
-        case SYN: {
-            cout << "SYN";
-            break;
-        }
-        case FIN: {
-            cout << "FIN";
-            break;
-        }
-    }
-    cout << endl;
-}
-
-
-void Packet::official_send_print(bool is_client, int cwnd, int ss_thresh, bool is_dup) {
-    cout << "SEND " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
-    if (is_client) {
-        cout << " " << cwnd << " " << ss_thresh;
-    }
-    cout << " ";
-    switch (Header::give_flag(header)) {
-        case SYN_ACK: {
-            cout << "ACK SYN";
-            break;
-        }
-        case FIN_ACK: {
-            cout << "ACK FIN";
-            break;
-        }
-        case ACK: {
-            cout << "ACK";
-            break;
-        }
-        case SYN: {
-            cout << "SYN";
-            break;
-        }
-        case FIN: {
-            cout << "FIN";
-            break;
-        }
-    }
-    if (is_dup)
-    {
-        cout << " DUP";
-    }
-    cout << endl;
-}
-
-void Packet::official_drop_print()
+void Packet::official_recv_print(bool is_client, int cwnd, int ss_thresh)
 {
-    cout << "DROP " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header) << " ";
+    cout << "RECV " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
+    if (is_client)
+    {
+        cout << " " << cwnd << " " << ss_thresh;
+    }
+    cout << " ";
     switch (Header::give_flag(header))
-        {
+    {
         case SYN_ACK:
         {
             cout << "ACK SYN";
@@ -200,24 +144,105 @@ void Packet::official_drop_print()
     cout << endl;
 }
 
-shared_ptr<Packet> recv_packet(Conn &conn) {
+void Packet::official_send_print(bool is_client, int cwnd, int ss_thresh, bool is_dup)
+{
+    cout << "SEND " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header);
+    if (is_client)
+    {
+        cout << " " << cwnd << " " << ss_thresh;
+    }
+    cout << " ";
+    switch (Header::give_flag(header))
+    {
+        case SYN_ACK:
+        {
+            cout << "ACK SYN";
+            break;
+        }
+        case FIN_ACK:
+        {
+            cout << "ACK FIN";
+            break;
+        }
+        case ACK:
+        {
+            cout << "ACK";
+            break;
+        }
+        case SYN:
+        {
+            cout << "SYN";
+            break;
+        }
+        case FIN:
+        {
+            cout << "FIN";
+            break;
+        }
+    }
+    if (is_dup)
+    {
+        cout << " DUP";
+    }
+    cout << endl;
+}
+
+void Packet::official_drop_print()
+{
+    cout << "DROP " << Header::give_seq(header) << " " << Header::give_ack(header) << " " << Header::give_id(header) << " ";
+    switch (Header::give_flag(header))
+    {
+        case SYN_ACK:
+        {
+            cout << "ACK SYN";
+            break;
+        }
+        case FIN_ACK:
+        {
+            cout << "ACK FIN";
+            break;
+        }
+        case ACK:
+        {
+            cout << "ACK";
+            break;
+        }
+        case SYN:
+        {
+            cout << "SYN";
+            break;
+        }
+        case FIN:
+        {
+            cout << "FIN";
+            break;
+        }
+    }
+    cout << endl;
+}
+
+shared_ptr<Packet> recv_packet(Conn &conn)
+{
     char buffer[TOTAL_BUFFER_SIZE];
     //    FD_ZERO(&conn.read_fds);
     memset(buffer, '\0', sizeof(buffer));
     struct timeval timeout;
-    timeout.tv_sec = 0; // TODO: fix server
+    timeout.tv_sec = 0;
     timeout.tv_usec = 500000; // 0.5 sec TODO: check!!!!!!!
-            D(cout << "xxx if select" << endl;)
-    if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0) {
-                D(cout << "@@@yes" << endl;)
+    D(cout << "xxx if select" << endl;)
+    if (select(conn.socket + 1, &conn.read_fds, NULL, NULL, &timeout) > 0)
+    {
+        D(cout << "@@@yes" << endl;)
         no_recv_check_exit_can_check = false;
         int n_bytes = int(recvfrom(conn.socket, buffer, sizeof(buffer), 0,
                                    (struct sockaddr *)&conn.addr, &conn.addr_size));
         //        printf("%s\n", strerror(errno));
         D(cout << "n_bytes " << n_bytes << endl;)
         return shared_ptr<Packet>(new Packet(buffer, n_bytes));
-    } else {
-                D(cout << "@@@no" << endl;)
+    }
+    else
+    {
+        D(cout << "@@@no" << endl;)
         // TODO: potentially reset...
         FD_ZERO(&conn.read_fds);
         FD_SET(conn.socket, &conn.read_fds); // checked :)
@@ -228,20 +253,23 @@ shared_ptr<Packet> recv_packet(Conn &conn) {
     }
 }
 
-void no_recv_check_exit() {
-    if (no_recv_check_exit_can_check) {
+void no_recv_check_exit()
+{
+    if (no_recv_check_exit_can_check)
+    {
         timestamp cur = high_resolution_clock::now();
-        double duration = std::chrono::duration_cast
-        <std::chrono::milliseconds>(cur - most_recent_time_no_recved).count();
-        if (duration > 10000) {
-                    cout << "ABORT: finally " << duration << " msecs passed" << endl;
+        double duration = std::chrono::duration_cast<std::chrono::milliseconds>(cur - most_recent_time_no_recved).count();
+        if (duration > 10000)
+        {
+            cout << "ABORT: finally " << duration << " msecs passed" << endl;
             exit(EXIT_FAILURE);
         }
-//        cout << "@" << endl;
-    } else {
+        //        cout << "@" << endl;
+    }
+    else
+    {
         most_recent_time_no_recved = high_resolution_clock::now();
         no_recv_check_exit_can_check = true;
-//        cout << "@@@last_time_something_recved " << endl;
+        //        cout << "@@@last_time_something_recved " << endl;
     }
 }
-
