@@ -137,32 +137,31 @@ void Packet::official_send_print(bool is_client, int cwnd, int ss_thresh, bool i
         cout << " " << cwnd << " " << ss_thresh;
     }
     cout << " ";
-    if (is_dup) {
-        cout << "DUP";
-    }
-    else {
-        switch (Header::give_flag(header)) {
-            case SYN_ACK: {
-                cout << "ACK SYN";
-                break;
-            }
-            case FIN_ACK: {
-                cout << "ACK FIN";
-                break;
-            }
-            case ACK: {
-                cout << "ACK";
-                break;
-            }
-            case SYN: {
-                cout << "SYN";
-                break;
-            }
-            case FIN: {
-                cout << "FIN";
-                break;
-            }
+    switch (Header::give_flag(header)) {
+        case SYN_ACK: {
+            cout << "ACK SYN";
+            break;
         }
+        case FIN_ACK: {
+            cout << "ACK FIN";
+            break;
+        }
+        case ACK: {
+            cout << "ACK";
+            break;
+        }
+        case SYN: {
+            cout << "SYN";
+            break;
+        }
+        case FIN: {
+            cout << "FIN";
+            break;
+        }
+    }
+    if (is_dup)
+    {
+        cout << " DUP";
     }
     cout << endl;
 }
