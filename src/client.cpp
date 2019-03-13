@@ -166,7 +166,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
     ClientData rtn;
     int start_seq = CLIENT_DATA_START_SEQ_NUM;
     int cnt = 0;
-    while(1) {
+    while(true) {
         memset(buffer, '\0', sizeof(buffer));
         int bytes_send = input.read(buffer, sizeof(buffer)).gcount();
         if (bytes_send == 0) {
@@ -179,6 +179,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
             flag = ACK;
             ack_num = SERVER_DATA_START_SEQ_NUM;
         }
+        start_seq = client_get_next_seq_num(start_seq);
         shared_ptr<Packet> new_pack(new Packet(buffer, bytes_send, start_seq, ack_num, Header::give_id(syn_ack->header), flag));
         new_pack->print_packet();
         rtn.packets.push_back(new_pack); // TODO: properly set the nums
