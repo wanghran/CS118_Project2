@@ -199,7 +199,14 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
         if (congestion_control_can_send(client_data, packet_ptr, bytes_sent_so_far)) {
             if (packet_ptr->state == INIT || packet_ptr->state == TIMEOUT) { // if already sent, no sent again
                 packet_ptr->send_packet(conn);
-                packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
+                if (packet_ptr->state == INIT)
+                {
+                    packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
+                }
+                else
+                {
+                    packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, true);
+                }
                 D(cout << ">>> Sent packet " << i << " packet content:" << endl;)
                 packet_ptr->print_packet();
                 cnt += 1;
@@ -286,15 +293,26 @@ shared_ptr<Packet> syn(Conn &conn) {
         }
         shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
         if (recv_pack_ptr) {
-            recv_pack_ptr->official_recv_print(true, CWND, SS_THRESH);
-            recv_pack_ptr->print_packet();
-            assert (ntohs(recv_pack_ptr->header.flag) == 6);
-            return recv_pack_ptr;
+            u_int32_t ack_num = Header::give_ack(recv_pack_ptr->header);
+            if (ack_num != 12346) 
+            {
+                recv_pack_ptr->official_drop_print();
+                recv_pack_ptr->print_packet();
+            }
+            else
+            {
+                recv_pack_ptr->official_recv_print(true, CWND, SS_THRESH);
+                recv_pack_ptr->print_packet();
+                return recv_pack_ptr;
+            }
+            // assert (ntohs(recv_pack_ptr->header.flag) == 6);
         } else {
             continue; // keep sending the syn packet until receiving ack
         }
     }
 }
+
+// TODO: close client socket 2 secs after receive the correct fin-ack
 
 void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
     while (true) {
@@ -305,25 +323,37 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
         D(cout << "@@@ seq_num " << seq_num << endl;)
         client_data.packets.back()->print_packet();
         Packet FIN_pack1(FIN_buffer, 0, seq_num, 0, Header::give_id(syn_ack->header), FIN);
-        D(cout << "Fin: pack 1" << endl;)
-        FIN_pack1.print_packet();
-        FIN_pack1.send_packet(conn);
-        FIN_pack1.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
         while (true) {
+            D(cout << "Fin: pack 1" << endl;)
+            FIN_pack1.print_packet();
+            FIN_pack1.send_packet(conn);
+            FIN_pack1.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
+
             shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
             D(cout << "recv or not" << endl;)
             if (recv_pack_ptr) {
-                recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
-                D(cout << ":)" << endl;)
-                D(cout << "Fin: pack 1 acked" << endl;)
-                recv_pack_ptr->print_packet();
-                //                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
-                Packet FIN_pack2(FIN_buffer, 0, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
-                D(cout << "Fin: pack 2" << endl;)
-                FIN_pack2.print_packet();
-                FIN_pack2.send_packet(conn);
-                FIN_pack2.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
-                return;
+                if (Header::give_id(recv_pack_ptr->header) != Header::give_id(syn_ack->header))
+                {
+                    recv_pack_ptr->official_drop_print();
+                }
+                else if (Header::give_ack(recv_pack_ptr->header) != seq_num + 1)
+                {
+                    recv_pack_ptr->official_drop_print();
+                }
+                else
+                {
+                    recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
+                    D(cout << ":)" << endl;)
+                    D(cout << "Fin: pack 1 acked" << endl;)
+                    recv_pack_ptr->print_packet();
+                    //                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
+                    Packet FIN_pack2(FIN_buffer, 0, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
+                    D(cout << "Fin: pack 2" << endl;)
+                    FIN_pack2.print_packet();
+                    FIN_pack2.send_packet(conn);
+                    FIN_pack2.official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
+                    return;
+                }
             } else {
                 D(cout << ":(" << endl;)
                 //                exit(-1);
