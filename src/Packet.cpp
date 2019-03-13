@@ -54,7 +54,7 @@ Packet::~Packet() {}
 
 void Packet::send_packet(const Conn &conn) {
     if (sendto(conn.socket, total_data,
-               data_bytes + HEADER_SIZE + 1, 0,
+               data_bytes + HEADER_SIZE, 0,
                (struct sockaddr *)&conn.addr, conn.addr_size) < 0) {
         perror("send to");
         exit(EXIT_FAILURE);

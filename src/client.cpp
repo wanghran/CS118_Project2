@@ -40,7 +40,7 @@ using std::vector;
 using std::shared_ptr;
 using std::string;
 
-#define READ_DATA_BUFFER_SIZE 511
+#define READ_DATA_BUFFER_SIZE 512
 #define CWND 512
 #define SS_THRESH 10000
 #define MAX_ACK_SEQ 102400
@@ -55,6 +55,7 @@ public:
     int left = 0;
     int cwnd = CWND;
     int ss_thresh = SS_THRESH;
+    int current_sent = 0;
 };
 
 
@@ -172,7 +173,7 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         if (bytes_send == 0) {
             break;
         }
-        D(cout << "Packet contains " << bytes_send << " bytes of data" << endl;)
+//        D(cout << "Packet contains " << bytes_send << " bytes of data" << endl;)
         int flag = 0;
         int ack_num = 0;
         if (cnt == 0) {
@@ -181,9 +182,9 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
         }
         start_seq = client_get_next_seq_num(start_seq);
         shared_ptr<Packet> new_pack(new Packet(buffer, bytes_send, start_seq, ack_num, Header::give_id(syn_ack->header), flag));
-        new_pack->print_packet();
+//        new_pack->print_packet();
         rtn.packets.push_back(new_pack); // TODO: properly set the nums
-        start_seq += (bytes_send + 1);
+        start_seq += bytes_send;
         ++cnt;
     }
     input.close();
@@ -194,23 +195,28 @@ ClientData gen_client_data(const string &file_name, shared_ptr<Packet> syn_ack) 
 void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn) {
     int cnt = 0;
     int bytes_sent_so_far = 0;
+    client_data.current_sent = 0;
     for (int i = client_data.left; i < int(client_data.packets.size()); ++i) {
         auto const packet_ptr = client_data.packets[i];
         if (congestion_control_can_send(client_data, packet_ptr, bytes_sent_so_far)) {
             if (packet_ptr->state == INIT || packet_ptr->state == TIMEOUT) { // if already sent, no sent again
-                packet_ptr->send_packet(conn);
                 if (packet_ptr->state == INIT)
                 {
+//                    cout << "@@ " << packet_ptr->state << endl;
                     packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, false);
                 }
                 else
                 {
+//                    cout << "INIT" << INIT << SENT << ACKED << TIMEOUT << endl;
+//                    cout << "## " << packet_ptr->state << endl;
                     packet_ptr->official_send_print(true, client_data.cwnd, client_data.ss_thresh, true);
                 }
+                packet_ptr->send_packet(conn);
+                ++client_data.current_sent;
                 D(cout << ">>> Sent packet " << i << " packet content:" << endl;)
                 packet_ptr->print_packet();
                 cnt += 1;
-                bytes_sent_so_far += (packet_ptr->data_bytes + 1);
+                bytes_sent_so_far += (packet_ptr->data_bytes);
             }
         } else {
             break;
@@ -224,35 +230,41 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 
 
 void recv_acks(ClientData &client_data, Conn &conn) {
-    shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
-    if (recv_pack_ptr) {
-        recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
-        int n_bytes = recv_pack_ptr->total_bytes;
-        D(cout << "<<< Received ack, packet content:" << endl;)
-        recv_pack_ptr->print_packet();
-        int packet_id = client_convert_to_packet_id(Header::give_ack(recv_pack_ptr->header), n_bytes);
-        D(cout << "<<< Packet " << packet_id << " acked" << endl;)
-        assert (packet_id >= 0 and packet_id < client_data.packets.size());
-        client_data.packets[packet_id]->state = ACKED;
-        if (client_data.left < client_data.packets.size() - 1) {
-            client_data.left = packet_id + 1;
-            assert (client_data.left >= 0 and client_data.left < client_data.packets.size());
-        }
-        if (client_data.cwnd < client_data.ss_thresh) {
-            client_data.cwnd += CWND;
+    assert (client_data.current_sent >= 0);
+    for (int i = 0 ; i < client_data.current_sent; ++i) {
+        shared_ptr<Packet> recv_pack_ptr = recv_packet(conn);
+        if (recv_pack_ptr) {
+            recv_pack_ptr->official_recv_print(true, client_data.cwnd, client_data.ss_thresh);
+            int n_bytes = recv_pack_ptr->total_bytes;
+            D(cout << "<<< Received ack, packet content:" << endl;)
+            recv_pack_ptr->print_packet();
+            int packet_id = client_convert_to_packet_id(Header::give_ack(recv_pack_ptr->header), n_bytes);
+            D(cout << "<<< Packet " << packet_id << " acked" << endl;)
+            assert (packet_id >= 0 and packet_id < client_data.packets.size());
+            client_data.packets[packet_id]->state = ACKED;
+            cout << "@@@ Header::give_ack(recv_pack_ptr->header) " << Header::give_ack(recv_pack_ptr->header) << " packet_id " << packet_id << endl;
+            if (client_data.left < client_data.packets.size() - 1) {
+                client_data.left = packet_id + 1;
+                assert (client_data.left >= 0 and client_data.left < client_data.packets.size());
+            }
+            if (client_data.cwnd < client_data.ss_thresh) {
+                client_data.cwnd += CWND;
+            } else {
+                client_data.cwnd += (CWND * CWND) / client_data.cwnd;
+            }
+            
         } else {
-            client_data.cwnd += (CWND * CWND) / client_data.cwnd;
+            D(cout << "0.5 secs has passed --> all packets that have been sent are timeout" << endl;)
         }
-        
-    } else {
-        D(cout << "0.5 secs has passed --> all packets that have been sent are timeout" << endl;)
     }
 }
 
 void timeout_resend(ClientData &client_data, const Conn &conn) {
     int cnt = 0;
-    for (auto const& packet_ptr : client_data.packets) {
+    for (int i = client_data.left; i < int(client_data.packets.size()); ++i) {
+        auto const packet_ptr = client_data.packets[i];
         if (packet_ptr->is_timeout()) {
+            D(cout << "packet timeout!" << endl;)
             client_data.ss_thresh = client_data.cwnd / 2;
             client_data.cwnd = CWND;
             packet_ptr->state = TIMEOUT;
@@ -270,7 +282,7 @@ void timeout_resend(ClientData &client_data, const Conn &conn) {
 
 bool congestion_control_can_send
 (ClientData &client_data, const shared_ptr<Packet> packet_ptr, int bytes_sent_so_far) {
-    int total_would_be = bytes_sent_so_far + packet_ptr->data_bytes + 1;
+    int total_would_be = bytes_sent_so_far + packet_ptr->data_bytes;
     D(cout << "----- total_would_be " << total_would_be << " client_data.cwnd " << client_data.cwnd << endl;)
     return total_would_be <= client_data.cwnd;
 }
@@ -279,7 +291,7 @@ bool congestion_control_can_send
 shared_ptr<Packet> syn(Conn &conn) {
     char SYN_buffer[1];
     memset(SYN_buffer, '\0', sizeof(SYN_buffer));
-    Packet SYN_pack(SYN_buffer, 0, 12345, 0, 0, SYN);
+    Packet SYN_pack(SYN_buffer, 1, 12345, 0, 0, SYN);
     while (true) {
         if (SYN_pack.state == INIT) {
             D(cout << "Syn: Init sending" << endl;)
@@ -322,7 +334,7 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
         int seq_num = Header::give_seq(client_data.packets.back()->header) + 1 + client_data.packets.back()->data_bytes;
         D(cout << "@@@ seq_num " << seq_num << endl;)
         client_data.packets.back()->print_packet();
-        Packet FIN_pack1(FIN_buffer, 0, seq_num, 0, Header::give_id(syn_ack->header), FIN);
+        Packet FIN_pack1(FIN_buffer, 1, seq_num, 0, Header::give_id(syn_ack->header), FIN);
         while (true) {
             D(cout << "Fin: pack 1" << endl;)
             FIN_pack1.print_packet();
@@ -347,7 +359,7 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack) {
                     D(cout << "Fin: pack 1 acked" << endl;)
                     recv_pack_ptr->print_packet();
                     //                assert (ntohs(recv_pack_ptr->header.flag) == ACK or ntohs(recv_pack_ptr->header.flag) == FIN); // check
-                    Packet FIN_pack2(FIN_buffer, 0, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
+                    Packet FIN_pack2(FIN_buffer, 1, seq_num + 1 + DATA_SIZE, SERVER_DATA_START_SEQ_NUM + 1, Header::give_id(syn_ack->header), ACK); // TODO: Kim's server does not close
                     D(cout << "Fin: pack 2" << endl;)
                     FIN_pack2.print_packet();
                     FIN_pack2.send_packet(conn);
