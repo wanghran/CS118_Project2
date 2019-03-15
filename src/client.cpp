@@ -149,7 +149,6 @@ void init_connection(int argc, char *argv[], int &port, Conn &conn,
         fprintf(stderr, "ERROR: socket creation failed\n");
         exit(1);
     }
-    puts(host);
     /*Configure settings in address struct*/
     conn.addr.sin_family = AF_INET;
     conn.addr.sin_port = htons(port);
@@ -244,7 +243,7 @@ void send_as_many_packets_as_possible(ClientData &client_data, const Conn &conn)
 
 void recv_acks(ClientData &client_data, Conn &conn)
 {
-    assert(client_data.current_sent >= 0);
+    // assert(client_data.current_sent >= 0);
     D(cout << "### client_data.current_sent " << client_data.current_sent << endl;)
     for (int i = 0; i < client_data.current_sent; ++i)
     {
@@ -362,7 +361,7 @@ void fin(ClientData &client_data, Conn &conn, shared_ptr<Packet> syn_ack)
     {
         char FIN_buffer[1];
         memset(FIN_buffer, '\0', sizeof(FIN_buffer));
-        assert(!client_data.packets.empty());
+        // assert(!client_data.packets.empty());
         int seq_num = Header::give_seq(client_data.packets.back()->header) + 1 + client_data.packets.back()->data_bytes;
         D(cout << "@@@ seq_num " << seq_num << endl;)
         client_data.packets.back()->print_packet();

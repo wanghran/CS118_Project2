@@ -1,7 +1,7 @@
 CXX=g++
 CXXOPTIMIZE=
-CXXFLAGS= -g -pthread -std=c++11 $(CXXOPTIMIZE)
-USERID=123456789
+CXXFLAGS=-pthread -std=c++11 $(CXXOPTIMIZE)
+USERID=505029637_105025900_005023812
 SOURCES_CLIENT=client.cpp Header.cpp Packet.cpp utils.cpp
 SOURCES_SERVER=server.cpp Header.cpp Packet.cpp utils.cpp
 OBJECTS_CLIENT = $(SOURCES_CLIENT:.cpp=.o)
