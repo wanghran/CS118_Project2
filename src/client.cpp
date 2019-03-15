@@ -257,7 +257,7 @@ void recv_acks(ClientData &client_data, Conn &conn)
             recv_pack_ptr->print_packet();
             int packet_id = client_convert_to_packet_id(Header::give_ack(recv_pack_ptr->header), n_bytes);
             D(cout << "<<< Packet " << packet_id << " acked" << endl;)
-            assert(packet_id >= 0 and packet_id < client_data.packets.size());
+            // assert(packet_id >= 0 and packet_id < client_data.packets.size());
             client_data.packets[packet_id]->state = ACKED;
             //            cout << "@@@ Header::give_ack(recv_pack_ptr->header) " << Header::give_ack(recv_pack_ptr->header) << " packet_id " << packet_id << endl;
             if (client_data.left < client_data.packets.size() - 1)
