@@ -149,11 +149,11 @@ void init_connection(int argc, char *argv[], int &port, Conn &conn,
         fprintf(stderr, "ERROR: socket creation failed\n");
         exit(1);
     }
-
+    puts(host);
     /*Configure settings in address struct*/
     conn.addr.sin_family = AF_INET;
     conn.addr.sin_port = htons(port);
-    conn.addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    conn.addr.sin_addr.s_addr = inet_addr(host);
     memset(conn.addr.sin_zero, '\0', sizeof conn.addr.sin_zero);
 
     /*Initialize size variable to be used later on*/
